@@ -122,12 +122,14 @@ class OperationLogDesc(OperationBase):
     OP_DESC_MEETING_CREATE_CODE = OP_DESC_MEETING_BASE_CODE + 1
     OP_DESC_MEETING_UPDATE_CODE = OP_DESC_MEETING_BASE_CODE + 2
     OP_DESC_MEETING_DELETE_CODE = OP_DESC_MEETING_BASE_CODE + 3
+    OP_DESC_MEETING_TRANSLATE_CALLBACK_CODE = OP_DESC_MEETING_BASE_CODE + 4
 
     CN_OPERATION = {
         # meeting
         OP_DESC_MEETING_CREATE_CODE: "创建会议（%s/%s）。",
         OP_DESC_MEETING_UPDATE_CODE: "修改会议（%s/%s/%s）。",
         OP_DESC_MEETING_DELETE_CODE: "删除会议（%s/%s/%s）。",
+        OP_DESC_MEETING_TRANSLATE_CALLBACK_CODE: "翻译会议（%s）。",
     }
 
     EN_OPERATION = {
@@ -135,6 +137,7 @@ class OperationLogDesc(OperationBase):
         OP_DESC_MEETING_CREATE_CODE: "Create meeting(%s/%s).",
         OP_DESC_MEETING_UPDATE_CODE: "Update meeting(%s/%s/%s).",
         OP_DESC_MEETING_DELETE_CODE: "Delete meeting(%s/%s/%s).",
+        OP_DESC_MEETING_TRANSLATE_CALLBACK_CODE: "Translate meeting(%s).",
 
     }
 

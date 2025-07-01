@@ -10,6 +10,5 @@ from meeting_platform.utils.base_enum import EnumBase
 class UploadStatus(EnumBase):
     """上传状态"""
     INIT = (0, '初始化')
-    UPLOAD_OBS = (1, '已经上传OBS')
-    UPLOAD_BILI = (2, '已经上传BILI')
-    UPLOAD_ALL = (10, '全部已经上传完成')
+    TRANSLATE = (1, '完成请求翻译')
+    FINISH = (10, '已经上传完成')

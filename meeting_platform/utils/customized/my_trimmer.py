@@ -279,6 +279,7 @@ def auto_trimmer(input_file, output_file):
 
 
 def trimmer_video(video_path, mid):
+    logger.info("start to trimmer_video:{}".format(mid))
     trimmer_path = video_path.replace('.mp4', '_trimmer.mp4')
     auto_trimmer(video_path, trimmer_path)
     if not trimmer_path:

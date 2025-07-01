@@ -28,7 +28,8 @@ class HandleMeeting:
     def __init__(self, community):
         self.community = community
 
-    def _get_valid_query_range(self):
+    @staticmethod
+    def _get_valid_query_range():
         cur_date = datetime.datetime.now()
         start_date = str(cur_date - datetime.timedelta(days=settings.QUERY_MEETING_DATE))
         end_date = cur_date.strftime('%Y-%m-%d')

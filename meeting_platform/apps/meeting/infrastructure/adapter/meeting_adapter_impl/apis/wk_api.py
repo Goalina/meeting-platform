@@ -310,6 +310,8 @@ class WkApi(MeetingAdapter):
             endTime = (datetime.datetime.strptime(startTime, '%Y-%m-%d %H:%M') +
                        datetime.timedelta(seconds=rcdTime)).strftime('%Y-%m-%d %H:%M')
             if endTime < start_time or startTime > end_time:
+                logger.info("find the fault mid:{}/{},and actually:{}/{} plan:{}/{}".format(
+                    self.community, mid, startTime, endTime, start_time, end_time))
                 continue
             start_order_set.add(startTime)
         for st in sorted(list(start_order_set)):
@@ -322,6 +324,8 @@ class WkApi(MeetingAdapter):
                 endTime = (datetime.datetime.strptime(startTime, '%Y-%m-%d %H:%M') +
                            datetime.timedelta(seconds=rcdTime)).strftime('%Y-%m-%d %H:%M')
                 if endTime < start_time or startTime > end_time:
+                    logger.info("find the fault again mid:{}/{},and actually:{}/{} plan:{}/{}".format(
+                        self.community, mid, startTime, endTime, start_time, end_time))
                     continue
                 if startTime == st:
                     available_recordings.append(recording)
@@ -340,7 +344,7 @@ class WkApi(MeetingAdapter):
                 continue
             record_urls = res['recordUrls'][0]['urls']
             for record_url in record_urls:
-                if record_url['fileType'].lower() in ['hd', 'aux']:
+                if record_url['fileType'].lower() in ['hd', 'aux', 'sd']:
                     waiting_download_recordings.append(record_url)
         if not waiting_download_recordings:
             logger.info('[WkApi/_download_video] {}/{} filter to no available recordings'.

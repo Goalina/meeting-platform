@@ -1,0 +1,74 @@
+# it is the template of vault-config
+SECRET_KEY: ""
+
+DB:
+  NAME: ""
+  USER: ""
+  PASSWORD: ""
+  HOST: ""
+  PORT: ""
+
+COMMUNITY_ZOOM_OBS:
+  openUBMC:
+    AK: ""
+    SK: ""
+    ENDPOINT: ""
+    BUCKET: ""
+    OBJECT: ""
+
+COMMUNITY_HOST:
+  openUBMC:
+    ZOOM:
+      - HOST: ""
+        ACCOUNT: ""
+
+    WELINK:
+      - HOST: ""
+        ACCOUNT: ""
+        PWD:
+
+    TENCENT:
+      - HOST: ""
+        TENCENT_HOST_KEY: ""
+        TENCENT_APP_ID: ""
+        TENCENT_SDK_ID: ""
+        TENCENT_SECRET_ID: ""
+        TENCENT_SECRET_KEY: ""
+
+COMMUNITY_SMTP:
+  openUBMC:
+    SMTP_MESSAGE_FROM: ""
+    SMTP_SERVER_HOST: ""
+    SMTP_SERVER_PORT: ""
+    SMTP_SERVER_USER: ""
+    SMTP_SERVER_PASS: ""
+
+COMMUNITY_KAFKA:
+  openUBMC:
+    KAFKA_TOPIC: ""
+    KAFKA_SERVER: ""
+    KAFKA_CRT_PATH: ""
+    KAFKA_USERNAME: ""
+    KAFKA_PASSWORD: ""
+
+COMMUNITY_OBS:
+  openUBMC:
+    AK: ""
+    SK: ""
+    ENDPOINT: ""
+    BUCKET: ""
+
+COMMUNITY_BILI:
+  openUBMC:
+    BILI_UID: ""
+    BILI_JCT: ""
+    BILI_SESS_DATA: ""
+
+COMMUNITY_TRANSLATE:
+  openUBMC:
+    URL: ""
+    BUCKET_NAME: ""
+
+COMMUNITY_AUDIT:
+  URL: ""
+  TOKEN: ""

@@ -9,17 +9,18 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import CreateAPIView, DestroyAPIView, GenericAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 
+from meeting.application.meeting import MeetingApp
+from meeting.application.obs_records_app import OBSRecordsApp
+from meeting.controller.serializers.meeting_serializers import MeetingSerializer, SingleMeetingSerializer, \
+    TranslateVideoTextSerializer
+
 from meeting_platform.utils.customized.my_pagination import MyPagination
+from meeting_platform.utils.ret_code import RetCode
 from meeting_platform.utils.customized.my_serializers import MySerializerParse, EmptySerializers
 from meeting_platform.utils.ret_api import ret_json, capture_my_validation_exception, MyValidationError
 from meeting_platform.utils.customized.my_view import MyRetrieveModelMixin, MyUpdateAPIView, MyListModelMixin
 from meeting_platform.utils.operation_log import OperationLogModule, OperationLogDesc, OperationLogType, \
     logger_wrapper, set_log_thread_local, log_key
-
-from meeting.application.meeting import MeetingApp
-from meeting.controller.serializers.meeting_serializers import MeetingSerializer, \
-    SingleMeetingSerializer
-from meeting_platform.utils.ret_code import RetCode
 
 
 class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIView):
@@ -156,4 +157,22 @@ class MeetingDateView(MyListModelMixin, GenericAPIView):
         if date is not None:
             date = self.serializer_class.check_date(date)
         data = self.app_class.get_meeting_date(community, group_name, date)
+        return ret_json(data=data)
+
+
+class MeetingTextCallBack(MySerializerParse, CreateAPIView):
+    serializer_class = TranslateVideoTextSerializer
+    queryset = None
+    authentication_classes = (BasicAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    app_class = OBSRecordsApp()
+
+    @capture_my_validation_exception
+    @logger_wrapper(OperationLogModule.OP_MODULE_MEETING, OperationLogType.OP_TYPE_CREATE,
+                    OperationLogDesc.OP_DESC_MEETING_TRANSLATE_CALLBACK_CODE)
+    def create(self, request, *args, **kwargs):
+        """create the translating meeting api"""
+        set_log_thread_local(request, log_key, [request.data.get('mid')])
+        meeting = self.get_my_serializer_data(request)
+        data = self.app_class.update_by_mid(meeting)
         return ret_json(data=data)

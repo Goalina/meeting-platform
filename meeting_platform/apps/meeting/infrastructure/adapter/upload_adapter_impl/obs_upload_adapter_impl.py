@@ -17,6 +17,7 @@ from meeting.infrastructure.adapter.obs_adapter_impl import ObsAdapterImp
 logger = logging.getLogger("log")
 
 
+# noinspection PyMethodMayBeStatic
 class ObsUploadAdapterImpl(UploadAdapter):
     def __init__(self, meeting):
         super(ObsUploadAdapterImpl, self).__init__(meeting)
@@ -70,6 +71,7 @@ class ObsUploadAdapterImpl(UploadAdapter):
 
     @func_retry()
     def upload(self, video_path, cover_path):
+        logger.info("start to upload to obs...")
         # 1.upload the video
         video_object = self._get_obs_video_object()
         metadata = self._generate_obs_metadata(video_object, video_path)
@@ -94,4 +96,4 @@ class ObsUploadAdapterImpl(UploadAdapter):
             logger.error('[ObsUploadAdapterImpl/upload] {}/{} Unexpected upload cover result to OBS: {}'.
                          format(self.meeting["community"], self.meeting["mid"], upload_video_res))
             return
-        return True
+        return video_object

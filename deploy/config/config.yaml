@@ -1,0 +1,26 @@
+DEBUG: false
+IS_DELETE_CONFIG: true
+MYSQL_TLS_PEM_PATH: ""
+UWSGI_TLS_CRT_PATH: ""
+UWSGI_TLS_KEY_PATH: ""
+
+TEMPLATE:
+  TEMPLATE_NOT_SUMMARY_NOT_RECORDING: "meeting_platform/templates/template_without_summary_without_recordings.txt"
+  TEMPLATE_SUMMARY_NOT_RECORDING: "meeting_platform/templates/template_with_summary_without_recordings.txt"
+  TEMPLATE_NOT_SUMMARY_RECORDING: "meeting_platform/templates/template_without_summary_with_recordings.txt"
+  TEMPLATE_SUMMARY_RECORDING: "meeting_platform/templates/template_with_summary_with_recordings.txt"
+  TEMPLATE_CANCEL_EMAIL: "meeting_platform/templates/template_cancel_meeting.txt"
+
+API_PREFIX:
+  TENCENT_API_PREFIX: ""
+  WELINK_API_PREFIX: ""
+  ZOOM_API_PREFIX: ""
+  BILIBILI_API_PREFIX: ""
+
+COMMUNITY_SUPPORT:
+  - openUBMC
+
+COMMUNITY_PORTAL:
+  openUBMC:
+    PORTAL_EN: ""
+    PORTAL_ZH: ""

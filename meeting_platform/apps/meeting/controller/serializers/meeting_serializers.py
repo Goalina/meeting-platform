@@ -13,31 +13,38 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 
+from meeting.models import Meeting, MeetingObsRecords
+
 from meeting_platform.utils.check_params import check_field, check_invalid_content, check_email_list, check_date, \
     check_time, check_link, check_duration
 from meeting_platform.utils.common import mask_email_full
 from meeting_platform.utils.ret_api import MyValidationError
 from meeting_platform.utils.ret_code import RetCode
-
-from meeting.models import Meeting
-
 from meeting_platform.utils.client.audit_client import AuditClient
 
 logger = logging.getLogger("log")
 
 
+# noinspection PyMethodMayBeStatic
 class MeetingSerializer(ModelSerializer):
     """MeetingSerializer for get a meeting and create meeting"""
     __audit_client = AuditClient()
     duration = serializers.SerializerMethodField()
     duration_time = serializers.SerializerMethodField()
+    bili_status = serializers.SerializerMethodField()
+    bili_replay_url = serializers.SerializerMethodField()
+    translate_status = serializers.SerializerMethodField()
+    text_vtt_url = serializers.SerializerMethodField()
+    text_json_url = serializers.SerializerMethodField()
+    text_video_url = serializers.SerializerMethodField()
 
     class Meta:
         """Meta Meta"""
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
-                  'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'upload_status',
-                  'join_url', 'replay_url', 'create_time', 'update_time', 'is_delete', 'duration', 'duration_time']
+                  'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'join_url', 'create_time', 'update_time',
+                  'is_delete', 'is_record', 'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url',
+                  'text_json_url', 'text_video_url', 'duration', 'duration_time']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'required': True},
@@ -54,9 +61,13 @@ class MeetingSerializer(ModelSerializer):
             'is_record': {'required': True},
             'mid': {'read_only': True},
             'm_mid': {'read_only': True},
-            'upload_status': {'read_only': True},
             'join_url': {'read_only': True},
-            'replay_url': {'read_only': True},
+            'bili_status': {'read_only': True},
+            'bili_replay_url': {'read_only': True},
+            'translate_status': {'read_only': True},
+            'text_vtt_url': {'read_only': True},
+            'text_json_url': {'read_only': True},
+            'text_video_url': {'read_only': True},
             'create_time': {'read_only': True},
             'update_time': {'read_only': True},
             'is_delete': {'read_only': True},
@@ -149,10 +160,6 @@ class MeetingSerializer(ModelSerializer):
             return value
 
     def validate(self, attrs):
-        etherpad = attrs.get("etherpad")
-        if etherpad is not None and not etherpad.startswith(settings.COMMUNITY_ETHERPAD[attrs["community"]]):
-            logger.error("invalid etherpad:{}".format(etherpad))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         check_duration(attrs["start"], attrs["end"], attrs["date"], datetime.now())
         if attrs["community"] not in settings.COMMUNITY_HOST.keys():
             logger.error('the community of {} have no resources in COMMUNITY_HOST in settings.'
@@ -162,6 +169,30 @@ class MeetingSerializer(ModelSerializer):
             logger.error('platform {} is not exist in COMMUNITY_HOST.'.format(attrs["platform"]))
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return attrs
+
+    def get_bili_status(self, obj):
+        if obj.bili_record:
+            return obj.bili_record.status
+
+    def get_bili_replay_url(self, obj):
+        if obj.bili_record:
+            return obj.bili_record.replay_url
+
+    def get_translate_status(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.status
+
+    def get_text_vtt_url(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.text_vtt_url
+
+    def get_text_json_url(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.text_json_url
+
+    def get_text_video_url(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.text_video_url
 
     def get_duration(self, obj):
         """get duration"""
@@ -185,19 +216,27 @@ class MeetingSerializer(ModelSerializer):
         return email_list
 
 
+# noinspection PyMethodMayBeStatic
 class SingleMeetingSerializer(ModelSerializer):
     """UpdateMeetingSerializer for update meeting"""
     duration = serializers.SerializerMethodField()
     duration_time = serializers.SerializerMethodField()
     email_list = serializers.SerializerMethodField()
+    bili_status = serializers.SerializerMethodField()
+    bili_replay_url = serializers.SerializerMethodField()
+    translate_status = serializers.SerializerMethodField()
+    text_vtt_url = serializers.SerializerMethodField()
+    text_json_url = serializers.SerializerMethodField()
+    text_video_url = serializers.SerializerMethodField()
     __audit_client = AuditClient()
 
     class Meta:
         """Meta Meta"""
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
-                  'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'upload_status',
-                  'join_url', 'replay_url', 'create_time', 'update_time', 'is_delete', 'duration', 'duration_time']
+                  'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'duration', 'duration_time',
+                  'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url', 'text_json_url',
+                  'text_video_url', 'join_url', 'create_time', 'update_time', 'is_delete']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'read_only': True},
@@ -214,9 +253,13 @@ class SingleMeetingSerializer(ModelSerializer):
             'email_list': {'read_only': True},
             'mid': {'read_only': True},
             'm_mid': {'read_only': True},
-            'upload_status': {'read_only': True},
             'join_url': {'read_only': True},
-            'replay_url': {'read_only': True},
+            'bili_status': {'read_only': True},
+            'bili_replay_url': {'read_only': True},
+            'translate_status': {'read_only': True},
+            'text_vtt_url': {'read_only': True},
+            'text_json_url': {'read_only': True},
+            'text_video_url': {'read_only': True},
             'create_time': {'read_only': True},
             'update_time': {'read_only': True},
             'is_delete': {'read_only': True},
@@ -278,6 +321,30 @@ class SingleMeetingSerializer(ModelSerializer):
         attrs["update_time"] = datetime.now()
         return attrs
 
+    def get_bili_status(self, obj):
+        if obj.bili_record:
+            return obj.bili_record.status
+
+    def get_bili_replay_url(self, obj):
+        if obj.bili_record:
+            return obj.bili_record.replay_url
+
+    def get_translate_status(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.status
+
+    def get_text_vtt_url(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.text_vtt_url
+
+    def get_text_json_url(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.text_json_url
+
+    def get_text_video_url(self, obj):
+        if obj.obs_records:
+            return obj.obs_records.text_video_url
+
     def get_duration(self, obj):
         """get duration"""
         return math.ceil(float(obj.end.replace(':', '.'))) - math.floor(float(obj.start.replace(':', '.')))
@@ -294,3 +361,28 @@ class SingleMeetingSerializer(ModelSerializer):
             desensitization_email = [mask_email_full(email) for email in email_strs]
             return ";".join(desensitization_email)
         return email_list
+
+
+# noinspection PyMethodMayBeStatic
+class TranslateVideoTextSerializer(ModelSerializer):
+    class Meta:
+        model = MeetingObsRecords
+        fields = ['mid', 'text_vtt_url', 'text_json_url', 'text_video_url']
+
+    def validate_mid(self, value):
+        if not value:
+            logger.error("check the empty mid")
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return value
+
+    def validate_text_vtt_url(self, value):
+        if not value:
+            logger.error("check the empty text_vtt_url")
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return value
+
+    def validate_text_json_url(self, value):
+        if not value:
+            logger.error("check the empty text_json_url")
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return value

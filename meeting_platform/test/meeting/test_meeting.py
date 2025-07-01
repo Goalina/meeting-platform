@@ -39,8 +39,8 @@ class CreateMeetingViewTest(TestCommonMeeting):
         "start": "08:00",  # string类型，开始时间，必填
         "end": "09:00",  # string类型，结束时间，必填
 
-        # string类型，文本纪要链接，以配置中的COMMUNITY_ETHERPAD开头，必填，内容可为空，限制255
-        "etherpad": "{}p/infrastructure".format(settings.COMMUNITY_ETHERPAD["openEuler"]),
+        # string类型，文本纪要链接，必填，内容可为空，限制255
+        "etherpad": "https://xxx.com/p/infrastructure",
 
         "agenda": "今天开个会议",  # string类型，开会内容，必填，内容可以为空， 限制为4096，限制内容中含有http，\r\n, xss攻击标签
         "email_list": "",  # string类型, 发送邮件，以;拼接，长度最长为1000，每封邮箱长度最长为50，限制20封，必填，内容可以为空
@@ -318,8 +318,8 @@ class UpdateMeetingViewTest(TestCommonMeeting):
         "date": str(datetime.datetime.now().date() + timedelta(days=1)),  # string类型，时间：2023-10-29，必填
         "start": "10:00",  # string类型，开始时间，必填
         "end": "11:00",  # string类型，结束时间，必填
-        # string类型，文本纪要链接，以配置中的COMMUNITY_ETHERPAD开头，必填，内容可为空，限制255
-        "etherpad": "{}p/infrastructure".format(settings.COMMUNITY_ETHERPAD["openEuler"]),
+        # string类型，文本纪要链接，必填，内容可为空，限制255
+        "etherpad": "https://xxxx.com/p/infrastructure",
         "agenda": "今天开个会议",  # string类型，开会内容，必填，内容可以为空， 限制为4096，限制内容中含有http，\r\n, xss攻击标签
         "is_record": False  # bool类型，是否自动录制，必填，true为自动录制，false代表自动关闭录制
     }

@@ -13,7 +13,9 @@ from django.conf import settings
 from django.utils import timezone
 from django.forms import model_to_dict
 from django.db.models import Q
+from django.db import transaction
 
+from meeting.domain.primitive.upload_status import UploadStatus
 from meeting_platform.utils.common import start_thread, get_cur_date
 from meeting_platform.utils.operation_log import set_log_thread_local, log_key
 from meeting_platform.utils.ret_api import MyValidationError
@@ -25,12 +27,16 @@ from meeting.infrastructure.adapter.message_adapter_impl.email_adapter_impl impo
     DeleteMessageEmailAdapterImpl, UpdateMessageEmailAdapterImpl
 from meeting.infrastructure.adapter.message_adapter_impl.kafka_adapter_impl import CreateMessageKafKaAdapterImpl, \
     DeleteMessageKafKaAdapterImpl, UpdateMessageKafKaAdapterImpl
+from meeting.infrastructure.dao.meeting_records_obs_dao import MeetingRecordsObsDao
+from meeting.infrastructure.dao.meeting_records_bili_dao import MeetingRecordsBiliDao
 
 logger = logging.getLogger("log")
 
 
 class MeetingApp:
     meeting_dao = meeting_dao.MeetingDao
+    meeting_obs_records_dao = MeetingRecordsObsDao
+    meeting_bili_records_dao = MeetingRecordsBiliDao
     meeting_participants_dao = meeting_participants_dao.MeetingParticipantsDao
     meeting_adapter_impl = MeetingAdapterImpl()
     create_message_adapter_impl = [CreateMessageEmailAdapterImpl, CreateMessageKafKaAdapterImpl]
@@ -95,6 +101,45 @@ class MeetingApp:
         if m_count != 0:
             raise MyValidationError(RetCode.STATUS_MEETING_REPEAT_FAILED)
 
+    def _save_dao(self, meeting):
+        with transaction.atomic():
+            if meeting["is_record"]:
+                obs_record_obj = self.meeting_obs_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
+                meeting["obs_records"] = obs_record_obj
+                bili_record_obj = self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
+                meeting["bili_record"] = bili_record_obj
+            else:
+                meeting["obs_records"] = None
+                meeting["bili_record"] = None
+            return self.meeting_dao.create(**meeting)
+
+    def _update_dao(self, meeting_id, meeting):
+        with transaction.atomic():
+            obs_record_obj = self.meeting_obs_records_dao.get_by_mid(meeting["mid"])
+            bili_record_obj = self.meeting_bili_records_dao.get_by_mid(meeting["mid"])
+            if meeting["is_record"]:
+                if not obs_record_obj:
+                    obs_record_obj = self.meeting_obs_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
+                meeting["obs_records"] = obs_record_obj
+                if not bili_record_obj:
+                    bili_record_obj = self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
+                meeting["bili_record"] = bili_record_obj
+            else:
+                if obs_record_obj:
+                    self.meeting_obs_records_dao.delete_by_mid(meeting["mid"])
+                    meeting["obs_records"] = None
+                if bili_record_obj:
+                    self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
+                    meeting["bili_record"] = None
+            return self.meeting_dao.update_by_id(meeting_id, **meeting)
+
+    def _delete_dao(self, meeting_id):
+        with transaction.atomic():
+            meeting_obj = self.meeting_dao.get_by_id(meeting_id)
+            self.meeting_bili_records_dao.delete_by_mid(meeting_obj.mid)
+            self.meeting_obs_records_dao.delete_by_mid(meeting_obj.mid)
+            return self.meeting_dao.delete_by_id(meeting_id)
+
     def create(self, meeting):
         """create meeting"""
         # check the meeting limit
@@ -108,7 +153,7 @@ class MeetingApp:
         meeting["mid"], meeting["m_mid"], meeting["join_url"] = self.meeting_adapter_impl.create(meeting["host_id"],
                                                                                                  meeting)
         # create in database
-        result = self.meeting_dao.create(**meeting)
+        result = self._save_dao(meeting)
         meeting["id"] = result.id
         # send message
         start_thread(self._send_message, (meeting, self.create_message_adapter_impl))
@@ -123,10 +168,6 @@ class MeetingApp:
             logger.error('[MeetingApp/update]Invalid meeting id:{}'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
         meeting = model_to_dict(meeting)
-        etherpad = meeting_data.get("etherpad")
-        if etherpad and not etherpad.startswith(settings.COMMUNITY_ETHERPAD[meeting["community"]]):
-            logger.error("invalid etherpad:{}".format(etherpad))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
         meeting.update(meeting_data)
         meeting.update({"sequence": meeting["sequence"] + 1})
@@ -140,7 +181,7 @@ class MeetingApp:
         # update meeting
         self.meeting_adapter_impl.update(meeting)
         # update in database
-        result = self.meeting_dao.update_by_id(meeting_id, **meeting)
+        result = self._update_dao(meeting_id, meeting)
         # send message
         start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
@@ -161,7 +202,7 @@ class MeetingApp:
         # delete meeting
         self.meeting_adapter_impl.delete(meeting)
         # update is_delete=1 in database
-        result = self.meeting_dao.delete_by_id(meeting_id)
+        result = self._delete_dao(meeting_id)
         # send message
         start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
         logger.info('[MeetingApp/delete] {}/{}: delete meeting which mid is {} and id is {}.'
