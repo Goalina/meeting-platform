@@ -179,7 +179,7 @@ class HandleRecording:
                 vid = self.upload_bili_adapter_impl(meeting).upload(video_path, cover_path, return_replay_url=False)
                 if not vid:
                     raise Exception("upload bili failed")
-                logger.error("the replay_url is:{}".format(vid))
+                logger.info("waiting the vid:{} pass".format(vid))
                 while True:
                     all_videos = self.bili_adapter_impl.search_all_videos()
                     if vid in all_videos:
