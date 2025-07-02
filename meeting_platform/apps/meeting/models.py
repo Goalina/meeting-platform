@@ -31,8 +31,8 @@ class MeetingBiliRecords(models.Model):
     objects = models.Manager()
 
     class Meta:
-        db_table = "meetings_records_obs"
-        verbose_name = "meetings_records_obs"
+        db_table = "meetings_records_bili"
+        verbose_name = "meetings_records_bili"
         verbose_name_plural = verbose_name
 
     def __str__(self):
@@ -50,8 +50,8 @@ class MeetingObsRecords(models.Model):
     objects = models.Manager()
 
     class Meta:
-        db_table = "meetings_records_bili"
-        verbose_name = "meetings_records_bili"
+        db_table = "meetings_records_obs"
+        verbose_name = "meetings_records_obs"
         verbose_name_plural = verbose_name
 
     def __str__(self):
