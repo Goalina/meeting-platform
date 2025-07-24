@@ -7,7 +7,8 @@
 from dataclasses import dataclass
 
 from meeting.infrastructure.adapter.meeting_adapter_impl.actions.base_action import CreateAction, \
-    UpdateAction, DeleteAction, GetParticipantsAction, GetVideoAction
+    UpdateAction, DeleteAction, GetParticipantsAction, GetVideoAction, CreateCycleAction, UpdateCycleAction, \
+    UpdateCycleSubAction
 
 
 @dataclass
@@ -15,6 +16,19 @@ class WkCreateAction(CreateAction):
     date: str
     start: str
     end: str
+    topic: str
+    is_record: bool
+
+
+@dataclass
+class WkCreateCycleAction(CreateCycleAction):
+    start_date: str
+    end_date: str
+    start: str
+    end: str
+    cycle_type: str
+    interval: int
+    point: str
     topic: str
     is_record: bool
 
@@ -30,8 +44,43 @@ class WkUpdateAction(UpdateAction):
 
 
 @dataclass
+class WkUpdateCycleAction(UpdateCycleAction):
+    mid: str
+    start_date: str
+    end_date: str
+    start: str
+    end: str
+    cycle_type: str
+    interval: int
+    point: str
+    topic: str
+    is_record: bool
+
+
+@dataclass
+class WkUpdateCycleSubAction(UpdateCycleSubAction):
+    mid: str
+    sub_id: str
+    date: str
+    start: str
+    end: str
+    is_record: bool
+
+
+@dataclass
 class WkDeleteAction(DeleteAction):
     mid: str
+
+
+@dataclass
+class WkDeleteCycleAction(DeleteAction):
+    mid: str
+
+
+@dataclass
+class WkDeleteCycleSubAction(DeleteAction):
+    mid: str
+    sub_id: str
 
 
 @dataclass

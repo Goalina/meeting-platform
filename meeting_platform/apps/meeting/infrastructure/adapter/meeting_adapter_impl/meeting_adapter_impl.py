@@ -12,7 +12,8 @@ from meeting.domain.repository.meeting_adapter import MeetingAdapter
 from meeting.infrastructure.adapter.meeting_adapter_impl.actions.tencent_action import TencentCreateAction, \
     TencentDeleteAction, TencentGetParticipantsAction, TencentGetVideo, TencentUpdateAction
 from meeting.infrastructure.adapter.meeting_adapter_impl.actions.wk_action import WkCreateAction, WkUpdateAction, \
-    WkDeleteAction, WkGetParticipantsAction, WkGetVideo
+    WkDeleteAction, WkGetParticipantsAction, WkGetVideo, WkCreateCycleAction, WkUpdateCycleAction, WkDeleteCycleAction, \
+    WkUpdateCycleSubAction, WkDeleteCycleSubAction
 from meeting.infrastructure.adapter.meeting_adapter_impl.actions.zoom_action import ZoomCreateAction, \
     ZoomUpdateAction, ZoomDeleteAction, ZoomGetParticipantsAction, ZoomGetVideo
 from meeting.infrastructure.adapter.meeting_adapter_impl.apis.base_api import handler_meeting
@@ -36,13 +37,26 @@ class MeetingAction:
                 is_record=meeting["is_record"]
             )
         elif platform.lower() == WkApi.meeting_type:
-            action = WkCreateAction(
-                date=meeting["date"],
-                start=meeting["start"],
-                end=meeting["end"],
-                topic=meeting["topic"],
-                is_record=meeting["is_record"]
-            )
+            if meeting["is_cycle"]:
+                action = WkCreateCycleAction(
+                    start_date=meeting["cycle_start_date"],
+                    end_date=meeting["cycle_end_date"],
+                    start=meeting["cycle_start"],
+                    end=meeting["cycle_end"],
+                    cycle_type=meeting["cycle_type"],
+                    interval=meeting["cycle_interval"],
+                    point=meeting["cycle_point"],
+                    topic=meeting["topic"],
+                    is_record=meeting["is_record"]
+                )
+            else:
+                action = WkCreateAction(
+                    date=meeting["date"],
+                    start=meeting["start"],
+                    end=meeting["end"],
+                    topic=meeting["topic"],
+                    is_record=meeting["is_record"]
+                )
         elif platform.lower() == ZoomApi.meeting_type:
             action = ZoomCreateAction(
                 date=meeting["date"],
@@ -69,14 +83,28 @@ class MeetingAction:
                 is_record=meeting["is_record"]
             )
         elif platform.lower() == WkApi.meeting_type:
-            action = WkUpdateAction(
-                mid=meeting["mid"],
-                date=meeting["date"],
-                start=meeting["start"],
-                end=meeting["end"],
-                topic=meeting["topic"],
-                is_record=meeting["is_record"],
-            )
+            if meeting["is_cycle"]:
+                action = WkUpdateCycleAction(
+                    mid=meeting["mid"],
+                    start_date=meeting["cycle_start_date"],
+                    end_date=meeting["cycle_end_date"],
+                    start=meeting["cycle_start"],
+                    end=meeting["cycle_end"],
+                    cycle_type=meeting["cycle_type"],
+                    interval=meeting["cycle_interval"],
+                    point=meeting["cycle_point"],
+                    topic=meeting["topic"],
+                    is_record=meeting["is_record"]
+                )
+            else:
+                action = WkUpdateAction(
+                    mid=meeting["mid"],
+                    date=meeting["date"],
+                    start=meeting["start"],
+                    end=meeting["end"],
+                    topic=meeting["topic"],
+                    is_record=meeting["is_record"],
+                )
         elif platform.lower() == ZoomApi.meeting_type:
             action = ZoomUpdateAction(
                 mid=meeting["mid"],
@@ -91,6 +119,21 @@ class MeetingAction:
         return action
 
     @staticmethod
+    def get_update_sub_action(platform, meeting):
+        if platform.lower() == WkApi.meeting_type:
+            action = WkUpdateCycleSubAction(
+                mid=meeting["mid"],
+                sub_id=meeting["sub_id"],
+                date=meeting["date"],
+                start=meeting["cycle_start"],
+                end=meeting["cycle_end"],
+                is_record=meeting["is_record"]
+            )
+        else:
+            raise RuntimeError("[MeetingAdapterImpl/get_update_sub_action] invalid platform type")
+        return action
+
+    @staticmethod
     def get_delete_action(platform, meeting):
         if platform.lower() == TencentApi.meeting_type:
             action = TencentDeleteAction(
@@ -98,15 +141,31 @@ class MeetingAction:
                 m_mid=meeting["m_mid"],
             )
         elif platform.lower() == WkApi.meeting_type:
-            action = WkDeleteAction(
-                mid=meeting["mid"]
-            )
+            if meeting["is_cycle"]:
+                action = WkDeleteCycleAction(
+                    mid=meeting["mid"]
+                )
+            else:
+                action = WkDeleteAction(
+                    mid=meeting["mid"]
+                )
         elif platform.lower() == ZoomApi.meeting_type:
             action = ZoomDeleteAction(
                 mid=meeting["mid"],
             )
         else:
             raise RuntimeError("[MeetingAdapterImpl/get_delete_action] invalid platform type")
+        return action
+
+    @staticmethod
+    def get_delete_sub_action(platform, meeting):
+        if platform.lower() == WkApi.meeting_type:
+            action = WkDeleteCycleSubAction(
+                mid=meeting["mid"],
+                sub_id=meeting["sub_id"]
+            )
+        else:
+            raise RuntimeError("[MeetingAdapterImpl/get_delete_sub_action] invalid platform type")
         return action
 
     @staticmethod
@@ -163,16 +222,21 @@ class MeetingAdapterImpl(MeetingAdapter):
             logger.error("[MeetingAdapterImpl/create] {}/{}: Failed to create meeting, and code is {}"
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_MEETING_FAILED_CREATE)
-        meeting_id = resp.get('mid')
-        meeting_mid = resp.get("m_mid")
-        meeting_join_url = resp.get('join_url')
-        return meeting_id, meeting_mid, meeting_join_url
+        return meeting_id, resp_dict
 
     def update(self, meeting):
         action = self.meeting_action.get_update_action(meeting["platform"], meeting)
         status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
         if not str(status).startswith("20"):
             logger.error('[MeetingAdapterImpl/update] {}/{}: Failed to update meeting {}'
+                         .format(meeting["community"], meeting["platform"], str(status)))
+            raise MyInnerError(RetCode.STATUS_MEETING_FAILED_UPDATE)
+
+    def update_sub(self, meeting):
+        action = self.meeting_action.get_update_sub_action(meeting["platform"], meeting)
+        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
+        if not str(status).startswith("20"):
+            logger.error('[MeetingAdapterImpl/update_sub] {}/{}: Failed to update meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_MEETING_FAILED_UPDATE)
 
@@ -183,6 +247,14 @@ class MeetingAdapterImpl(MeetingAdapter):
             logger.error('[MeetingAdapterImpl/delete] {}/{}: Failed to delete meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_FAILED)
+
+    def delete_sub(self, meeting, meeting_sub_info):
+        action = self.meeting_action.get_delete_sub_action(meeting["platform"], meeting_sub_info)
+        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
+        if not str(status).startswith("20"):
+            logger.error('[MeetingAdapterImpl/delete_sub] {}/{}: Failed to update meeting {}'
+                         .format(meeting["community"], meeting["platform"], str(status)))
+            raise MyInnerError(RetCode.STATUS_MEETING_FAILED_UPDATE)
 
     def get_participants(self, meeting):
         action = self.meeting_action.get_participants_action(meeting["platform"], meeting)

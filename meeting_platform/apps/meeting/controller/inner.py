@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from meeting.application.meeting import MeetingApp
 from meeting.application.obs_records_app import OBSRecordsApp
 from meeting.controller.serializers.meeting_serializers import MeetingSerializer, SingleMeetingSerializer, \
-    TranslateVideoTextSerializer
+    TranslateVideoTextSerializer, CycleDateSerializer
 
 from meeting_platform.utils.customized.my_pagination import MyPagination
 from meeting_platform.utils.ret_code import RetCode
@@ -117,6 +117,35 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
         """delete meeting by mid"""
         set_log_thread_local(request, log_key, ["", "", kwargs.get('id')])
         data = self.app_class.delete(request, kwargs.get('id'))
+        return ret_json(data=data)
+
+
+class SingleSubMeetingView(MySerializerParse, MyUpdateAPIView, DestroyAPIView):
+    """update or delete a meeting"""
+    lookup_field = "id"
+    serializer_class = CycleDateSerializer
+    queryset = MeetingApp.meeting_cycle_dao.get_queryset()
+    authentication_classes = (BasicAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    app_class = MeetingApp()
+
+    @capture_my_validation_exception
+    @logger_wrapper(OperationLogModule.OP_MODULE_MEETING, OperationLogType.OP_TYPE_MODIFY,
+                    OperationLogDesc.OP_DESC_MEETING_UPDATE_SUB_CODE)
+    def update(self, request, *args, **kwargs):
+        """update meeting api"""
+        set_log_thread_local(request, log_key, [request.data.get('mid'), request.data.get('sub_id')])
+        meeting = self.get_my_serializer_data(request)
+        data = self.app_class.update_sub(meeting)
+        return ret_json(data=data)
+
+    @capture_my_validation_exception
+    @logger_wrapper(OperationLogModule.OP_MODULE_MEETING, OperationLogType.OP_TYPE_DELETE,
+                    OperationLogDesc.OP_DESC_MEETING_DELETE_SUB_CODE)
+    def destroy(self, request, *args, **kwargs):
+        """delete meeting by mid"""
+        set_log_thread_local(request, log_key, [request.data.get('mid'), request.data.get('sub_id')])
+        data = self.app_class.delete_sub(request.data.get('mid'), request.data.get('sub_id'))
         return ret_json(data=data)
 
 

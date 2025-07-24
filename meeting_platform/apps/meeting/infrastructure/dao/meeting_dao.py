@@ -14,9 +14,9 @@ class MeetingDao:
     @classmethod
     def get_conflict_meeting(cls, community, platform, date, start_search, end_search, meeting_id=None):
         if meeting_id is None:
-            return cls.dao.objects.filter(community=community, platform=platform, is_delete=0,
+            return cls.dao.objects.filter(community=community, platform=platform, is_delete=0, is_cycle=False,
                                           date=date, end__gt=start_search, start__lt=end_search)
-        return cls.dao.objects.filter(community=community, platform=platform, is_delete=0,
+        return cls.dao.objects.filter(community=community, platform=platform, is_delete=0, is_cycle=False,
                                       date=date, end__gt=start_search, start__lt=end_search).exclude(id=meeting_id)
 
     @classmethod
@@ -43,6 +43,10 @@ class MeetingDao:
     @classmethod
     def get_by_mid(cls, mid):
         return cls.dao.objects.filter(mid=mid, is_delete=0).first()
+
+    @classmethod
+    def get_by_mid_list(cls, mid_list):
+        return cls.dao.objects.filter(mid__in=mid_list, is_delete=0).values()
 
     @classmethod
     def update_by_id(cls, meeting_id, **kwargs):
