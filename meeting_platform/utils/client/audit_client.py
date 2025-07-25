@@ -32,7 +32,7 @@ class AuditClient:
             "type": self._audit_type,
             "text": content
         }
-        resp = requests.post(url=self._url, headers=headers, json=data)
+        resp = requests.post(url=self._url, headers=headers, json=data, timeout=settings.REQUEST_TIMEOUT)
         if not str(resp.status_code).startswith("20"):
             raise Exception("request audit:{}, and error msg:{}".format(str(resp.status_code), resp.content.decode()))
         return resp.json()

@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 set -e
 
+# Check if we are in the correct directory before running commands.
+if [[ ! $(pwd) == '/home/meetingplatform/meeting-platform' ]]; then
+	echo "Running in the wrong directory...switching to..."
+	cd /home/meetingplatform/meeting-platform
+fi
+
+python3 manage.py migrate
+
 function modify_ip() {
-  CURRENT_IP=$(hostname -I | awk '{print $1}')
+  CURRENT_IP=$(grep -v '^#' /etc/hosts | awk '{print $1}'|grep -E '([0-9]{1,3}\.){3}[0-9]{1,3}'|grep -v '^127\.')
 
   if [ -z "$CURRENT_IP" ]; then
     echo "not found the local ip"
@@ -20,20 +28,6 @@ function modify_ip() {
   echo "set new ip in uwsgi.ini: $CURRENT_IP"
 }
 
-function remove() {
-  yum remove -y hostname
-}
-
-# Check if we are in the correct directory before running commands.
-if [[ ! $(pwd) == '/home/meetingplatform/meeting-platform' ]]; then
-  echo "Running in the wrong directory...switching to..."
-  cd /home/meetingplatform/meeting-platform
-fi
-
-python3 manage.py migrate
-
 modify_ip
-
-remove
 
 exec $@

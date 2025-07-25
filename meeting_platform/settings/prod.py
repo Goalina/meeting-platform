@@ -17,10 +17,13 @@ CONFIG_PATH = os.getenv('CONFIG_PATH')
 VAULT_PATH = os.getenv('VAULT_PATH')
 
 # Read Content from path
-CONF = yaml.safe_load(open(CONFIG_PATH, 'r'))
-VAULT_CONF = yaml.safe_load(open(VAULT_PATH, 'r'))
+with open(CONFIG_PATH, 'r') as f:
+    CONF = yaml.safe_load(f)
+with open(VAULT_PATH, 'r') as f:
+    VAULT_CONF = yaml.safe_load(f)
 if not CONF["DEBUG"]:
-    MYSQL_TLS_PEM_CONTENT = open(CONF["MYSQL_TLS_PEM_PATH"], 'r')
+    with open(CONF["MYSQL_TLS_PEM_PATH"], 'r') as f:
+        MYSQL_TLS_PEM_CONTENT = f
 else:
     MYSQL_TLS_PEM_CONTENT = None
 
@@ -28,8 +31,10 @@ else:
 _run_condition = sys.argv[0] == 'uwsgi' or (len(sys.argv) >= 2 and sys.argv[1] == "runserver")
 if CONF["IS_DELETE_CONFIG"] and _run_condition:
     ALL_CONFIG_PATH_LIST = [CONFIG_PATH, VAULT_PATH, CONF["MYSQL_TLS_PEM_PATH"],
-                            CONF["UWSGI_TLS_CRT_PATH"], CONF["UWSGI_TLS_KEY_PATH"]]
+                            CONF["UWSGI_TLS_CRT_PATH"], CONF["UWSGI_TLS_KEY_PATH"], CONF.get("KAFKA_CRT_PATH")]
     for config_path in ALL_CONFIG_PATH_LIST:
+        if not config_path:
+            continue
         if os.path.exists(config_path):
             os.remove(config_path)
             print("delete config {} success".format(config_path))
