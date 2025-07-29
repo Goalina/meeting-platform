@@ -222,7 +222,7 @@ class MeetingAdapterImpl(MeetingAdapter):
             logger.error("[MeetingAdapterImpl/create] {}/{}: Failed to create meeting, and code is {}"
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_MEETING_FAILED_CREATE)
-        return meeting_id, resp_dict
+        return resp
 
     def update(self, meeting):
         action = self.meeting_action.get_update_action(meeting["platform"], meeting)

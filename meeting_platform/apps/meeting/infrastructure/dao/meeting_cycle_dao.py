@@ -26,3 +26,7 @@ class MeetingCycleDao:
     @classmethod
     def delete_by_id(cls, cycle_dao_id):
         return cls._dao.objects.filter(id=cycle_dao_id).delete()
+
+    @classmethod
+    def get_all(cls):
+        return cls._dao.objects.all()

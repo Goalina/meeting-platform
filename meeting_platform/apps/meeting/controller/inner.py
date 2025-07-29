@@ -124,7 +124,7 @@ class SingleSubMeetingView(MySerializerParse, MyUpdateAPIView, DestroyAPIView):
     """update or delete a meeting"""
     lookup_field = "id"
     serializer_class = CycleDateSerializer
-    queryset = MeetingApp.meeting_cycle_dao.get_queryset()
+    queryset = MeetingApp.meeting_cycle_dao.get_all()
     authentication_classes = (BasicAuthentication,)
     permission_classes = (IsAuthenticated,)
     app_class = MeetingApp()

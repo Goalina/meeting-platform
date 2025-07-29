@@ -225,27 +225,27 @@ class MeetingSerializer(ModelSerializer):
         return obj.start.split(':')[0] + ':00' + '-' + str(math.ceil(float(obj.end.replace(':', '.')))) + ':00'
 
     def get_cycle_start_date(self, obj):
-        """get cycle start date"""
+        """get cycle start date, and eg:2025-08-00"""
         if obj.cycle_date:
             return obj.cycle_date.start_date
 
     def get_cycle_end_date(self, obj):
-        """get cycle end date"""
+        """get cycle end date, and eg:2025-08-30"""
         if obj.cycle_date:
             return obj.cycle_date.end_date
 
     def get_cycle_start(self, obj):
-        """get cycle end date"""
+        """get cycle end date, and eg:08:00"""
         if obj.cycle_date:
             return obj.cycle_date.start
 
     def get_cycle_end(self, obj):
-        """get cycle end date"""
+        """get cycle end date, and eg:09:00"""
         if obj.cycle_date:
             return obj.cycle_date.end
 
     def get_cycle_type(self, obj):
-        """get cycle type"""
+        """get cycle type, and eg:"""
         if obj.cycle_date:
             return obj.cycle_date.cycle_type
 

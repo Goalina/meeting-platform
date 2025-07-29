@@ -134,7 +134,7 @@ class WkApi(MeetingAdapter):
         if not isinstance(action, WkCreateCycleAction):
             raise RuntimeError("[WkApi] action must be the subclass of WkCreateCycleAction")
         access_token = self._create_proxy_token()
-        start_time = (datetime.datetime.strptime(action.date + action.start, '%Y-%m-%d%H:%M') -
+        start_time = (datetime.datetime.strptime(action.start_date + action.start, '%Y-%m-%d%H:%M') -
                       datetime.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
         duration_time = int((datetime.datetime.strptime(action.end, '%H:%M') -
                              datetime.datetime.strptime(action.start, '%H:%M')).seconds / 60)
@@ -159,7 +159,7 @@ class WkApi(MeetingAdapter):
             "cycleParams": {
                 "startDate": action.start_date,
                 "endDate": action.end_date,
-                "cycle": action.cycle,
+                "cycle": action.cycle_type,
                 "interval": action.interval,
                 "point": action.point.split(","),
             },
@@ -170,6 +170,7 @@ class WkApi(MeetingAdapter):
         if action.is_record:
             data['isAutoRecord'] = 1
             data['recordType'] = 2
+        logger.info(data)
         response = requests.post(self._get_url(self.create_cycle_path), headers=headers, data=json.dumps(data),
                                  timeout=self.time_out)
         resp_dict = dict()
@@ -178,6 +179,7 @@ class WkApi(MeetingAdapter):
                          format(response.status_code, response.content.decode("utf-8")))
             return response.status_code, resp_dict
         json_data = response.json()
+        logger.info(json_data)
         resp_dict['mid'] = json_data[0]['conferenceID']
         resp_dict['start_url'] = json_data[0]['chairJoinUri']
         resp_dict['join_url'] = json_data[0]['guestJoinUri']

@@ -18,7 +18,7 @@ class MeetingCycleSubMeetingDao:
 
     @classmethod
     def get_by_date(cls, date, start_search, end_search):
-        return cls._dao.objects.filter(date=date, start__ge=start_search, end__le=end_search).all().values_list("mid")
+        return cls._dao.objects.filter(date=date, start__gte=start_search, end__lte=end_search).all().values_list("mid")
 
     @classmethod
     def create(cls, **kwargs):
@@ -33,8 +33,12 @@ class MeetingCycleSubMeetingDao:
         return cls._dao.objects.filter(mid=mid, sub_id=sub_id).first()
 
     @classmethod
-    def delete_by_mid(cls, mid, sub_id):
+    def delete_by_mid_and_sub_id(cls, mid, sub_id):
         return cls._dao.objects.filter(mid=mid, sub_id=sub_id).delete()
+
+    @classmethod
+    def delete_by_mid(cls, mid):
+        return cls._dao.objects.filter(mid=mid).delete()
 
     @classmethod
     def update_by_mid_and_sub_id(cls, mid, sub_id, **kwargs):

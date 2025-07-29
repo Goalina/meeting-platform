@@ -68,8 +68,7 @@ class MeetingCycleDate(models.Model):
     end = models.CharField(verbose_name='会议结束时间', max_length=32)
     cycle_type = models.SmallIntegerField(verbose_name="周期类型", choices=CycleType.to_tuple())
     interval = models.IntegerField(verbose_name="子会议时间间隔")
-    point = models.CharField(verbose_name="周期内的会员召开时间")
-    sub_info = models.CharField(verbose_name="周期性会议内容", max_length=4096)
+    point = models.CharField(verbose_name="周期内的会员召开时间", max_length=128)
 
     objects = models.Manager()
 
@@ -79,7 +78,7 @@ class MeetingCycleDate(models.Model):
         verbose_name_plural = verbose_name
 
     def __str__(self):
-        return "{}/{}/{}".format(self.start_date, self.end_date, self.cycle)
+        return "{}/{}/{}/{}".format(self.mid, self.cycle_type, self.start_date, self.end_date)
 
 
 class MeetingCycleSubMeeting(models.Model):
@@ -98,7 +97,7 @@ class MeetingCycleSubMeeting(models.Model):
         verbose_name_plural = verbose_name
 
     def __str__(self):
-        return "{}/{}/{}".format(self.start_date, self.end_date, self.cycle)
+        return "{}/{}/{}".format(self.mid, self.sub_id, self.date)
 
 
 class Meeting(models.Model):
