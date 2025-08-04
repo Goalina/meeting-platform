@@ -28,7 +28,7 @@ if not CONF["DEBUG"]:
 else:
     MYSQL_TLS_PEM_CONTENT = None
 
-if not CONF.get("KAFKA_CRT_PATH"):
+if CONF.get("KAFKA_CRT_PATH"):
     with open(CONF["KAFKA_CRT_PATH"], "r") as f:
         KAFKA_CRT_CONTENT = f.read()
 else:
