@@ -8,13 +8,14 @@ import json
 import ssl
 
 from kafka import KafkaProducer
+from django.conf import settings
 
 
 class KafKaClient:
     def __init__(self, kafka_info):
         server = kafka_info["KAFKA_SERVER"]
         context = ssl.create_default_context()
-        context.load_verify_locations(kafka_info["KAFKA_CRT_PATH"])
+        context.load_verify_locations(cadata=settings.KAFKA_CRT_CONTENT)
         context.check_hostname = False
         context.verify_mode = ssl.CERT_REQUIRED
         self.client = KafkaProducer(

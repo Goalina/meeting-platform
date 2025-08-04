@@ -18,14 +18,20 @@ function modify_ip() {
   fi
 
   # 备份原始配置文件
-  cp /home/meetingplatform/meeting-platform/deploy/production/uwsgi.ini /home/meetingplatform/meeting-platform/deploy/production/uwsgi.ini.bak
+  chmod 750 /home/meetingplatform/meeting-platform/deploy/production/gunicorn.conf.py
+  chmod 750 /home/meetingplatform/meeting-platform/
+
+  cp /home/meetingplatform/meeting-platform/deploy/production/gunicorn.conf.py /home/meetingplatform/meeting-platform/deploy/production/gunicorn.conf.py.bak
 
   # 替换HTTPS绑定IP
-  sed -i "s/https={{ip}}:8080/https=$CURRENT_IP:8080/" /home/meetingplatform/meeting-platform/deploy/production/uwsgi.ini.bak
+  sed -i "s/{{ip}}/${CURRENT_IP}/" /home/meetingplatform/meeting-platform/deploy/production/gunicorn.conf.py.bak
 
-  mv /home/meetingplatform/meeting-platform/deploy/production/uwsgi.ini.bak /home/meetingplatform/meeting-platform/deploy/production/uwsgi.ini
+  mv /home/meetingplatform/meeting-platform/deploy/production/gunicorn.conf.py.bak /home/meetingplatform/meeting-platform/gunicorn.conf.py
 
-  echo "set new ip in uwsgi.ini: $CURRENT_IP"
+  chmod 550 /home/meetingplatform/meeting-platform/deploy/production/gunicorn.conf.py
+  chmod 550 /home/meetingplatform/meeting-platform/
+  chmod 550 /home/meetingplatform/meeting-platform/gunicorn.conf.py
+  echo "modify new ip in gunicorn success"
 }
 
 modify_ip

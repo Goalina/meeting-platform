@@ -15,7 +15,7 @@ from meeting_platform.utils.ret_code import RetCode
 
 logger = logging.getLogger('log')
 
-email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]{1,255}\.[a-zA-Z]{2,}$')
 url_pattern = re.compile(r'https://|http://|www\.')
 crlf_pattern = re.compile(r'\r|\n|\r\n')
 

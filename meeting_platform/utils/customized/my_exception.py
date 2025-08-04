@@ -10,7 +10,7 @@ from django.core.exceptions import PermissionDenied
 from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.views import set_rollback
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed
 
 from meeting_platform.utils.ret_code import RetCode
 

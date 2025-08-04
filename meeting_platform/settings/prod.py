@@ -21,17 +21,38 @@ with open(CONFIG_PATH, 'r') as f:
     CONF = yaml.safe_load(f)
 with open(VAULT_PATH, 'r') as f:
     VAULT_CONF = yaml.safe_load(f)
+
 if not CONF["DEBUG"]:
     with open(CONF["MYSQL_TLS_PEM_PATH"], 'r') as f:
         MYSQL_TLS_PEM_CONTENT = f
 else:
     MYSQL_TLS_PEM_CONTENT = None
 
+if not CONF.get("KAFKA_CRT_PATH"):
+    with open(CONF["KAFKA_CRT_PATH"], "r") as f:
+        KAFKA_CRT_CONTENT = f.read()
+else:
+    KAFKA_CRT_CONTENT = None
+
+TLS_CRT_PATH = CONF.get("UWSGI_TLS_CRT_PATH")
+
+TLS_KEY_PATH = CONF.get("UWSGI_TLS_KEY_PATH")
+
+
+def get_tls_context():
+    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    if TLS_CRT_PATH or TLS_KEY_PATH:
+        context.load_cert_chain(certfile=TLS_CRT_PATH, keyfile=TLS_KEY_PATH)
+    return context
+
+
+TLS_CONTEXT = get_tls_context()
+
 # Delete the file after reading the configuration
-_run_condition = sys.argv[0] == 'uwsgi' or (len(sys.argv) >= 2 and sys.argv[1] == "runserver")
+_run_condition = len(sys.argv) >= 2 and sys.argv[1] == "runserver"
+ALL_CONFIG_PATH_LIST = [CONFIG_PATH, VAULT_PATH, CONF["MYSQL_TLS_PEM_PATH"],
+                        TLS_CRT_PATH, TLS_KEY_PATH, CONF.get("KAFKA_CRT_PATH")]
 if CONF["IS_DELETE_CONFIG"] and _run_condition:
-    ALL_CONFIG_PATH_LIST = [CONFIG_PATH, VAULT_PATH, CONF["MYSQL_TLS_PEM_PATH"],
-                            CONF["UWSGI_TLS_CRT_PATH"], CONF["UWSGI_TLS_KEY_PATH"], CONF.get("KAFKA_CRT_PATH")]
     for config_path in ALL_CONFIG_PATH_LIST:
         if not config_path:
             continue

@@ -87,8 +87,8 @@ class AudioTrimmer:
         current_start = None
         buffer = ""
 
-        start_pattern = re.compile(r"silence_start:\s*([\d.]+)")
-        end_pattern = re.compile(r"silence_end:\s*([\d.]+).*?silence_duration:\s*([\d.]+)")
+        start_pattern = re.compile(r"silence_start:\s*(\d{1,7}(?:\.\d{1,3})?)")
+        end_pattern = re.compile(r"silence_end:\s*(\d{1,7}(?:\d{1,3})?)\s*.*?silence_duration:\s*(\d{1,7}(?:\.\d{1,3})?)")
 
         while True:
             chunk = process.stderr.read(1024)
