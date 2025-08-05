@@ -13,12 +13,13 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 
-from meeting.models import Meeting, MeetingObsRecords, MeetingCycleDate
+from meeting.domain.primitive.cycle_type import CycleType
+from meeting.models import Meeting, MeetingObsRecords, MeetingCycleSubMeeting
 from meeting.infrastructure.dao.meeting_cycle_sub_dao import MeetingCycleSubMeetingDao
 
 from meeting_platform.utils.check_params import check_field, check_invalid_content, check_email_list, check_date, \
     check_time, check_link, check_duration
-from meeting_platform.utils.common import mask_email_full
+from meeting_platform.utils.common import to_anonymous_email_list
 from meeting_platform.utils.ret_api import MyValidationError
 from meeting_platform.utils.ret_code import RetCode
 from meeting_platform.utils.client.audit_client import AuditClient
@@ -40,24 +41,23 @@ class MeetingSerializer(ModelSerializer):
     text_vtt_url = serializers.SerializerMethodField()
     text_json_url = serializers.SerializerMethodField()
     text_video_url = serializers.SerializerMethodField()
-    cycle_start_date = serializers.SerializerMethodField()
-    cycle_end_date = serializers.SerializerMethodField()
-    cycle_start = serializers.SerializerMethodField()
-    cycle_end = serializers.SerializerMethodField()
-    cycle_type = serializers.SerializerMethodField()
-    cycle_interval = serializers.SerializerMethodField()
-    cycle_point = serializers.SerializerMethodField()
-    cycle_sub = serializers.SerializerMethodField()
+
+    cycle_start_date = serializers.CharField(required=False)
+    cycle_end_date = serializers.CharField(required=False)
+    cycle_start = serializers.CharField(required=False)
+    cycle_end = serializers.CharField(required=False)
+    cycle_type = serializers.CharField(required=False)
+    cycle_interval = serializers.CharField(required=False)
 
     class Meta:
         """Meta Meta"""
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'join_url', 'create_time', 'update_time',
-                  'is_delete', 'is_record', 'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url',
-                  'text_json_url', 'text_video_url', 'duration', 'duration_time', 'is_cycle', 'cycle_start_date',
-                  'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point',
-                  'cycle_sub']
+                  'is_delete', 'is_record', 'duration', 'duration_time', 'is_cycle', 'cycle_start_date',
+                  'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'obs_records',
+                  'bili_records', 'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url',
+                  'text_json_url', 'text_video_url', ]
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'required': True},
@@ -65,9 +65,9 @@ class MeetingSerializer(ModelSerializer):
             'community': {'required': True},
             'topic': {'required': True},
             'platform': {'required': True},
-            'date': {'required': True},
-            'start': {'required': True},
-            'end': {'required': True},
+            'date': {'required': False},
+            'start': {'required': False},
+            'end': {'required': False},
             'agenda': {'required': False},
             'etherpad': {'required': False},
             'email_list': {'required': False},
@@ -86,6 +86,8 @@ class MeetingSerializer(ModelSerializer):
             'is_delete': {'read_only': True},
             'duration': {'read_only': True},
             'duration_time': {'read_only': True},
+            'obs_records': {'read_only': True},
+            'bili_records': {'read_only': True},
             'is_cycle': {'required': True},
             'cycle_start_date': {'required': False},
             'cycle_end_date': {'required': False},
@@ -93,8 +95,6 @@ class MeetingSerializer(ModelSerializer):
             'cycle_end': {'required': False},
             'cycle_type': {'required': False},
             'cycle_interval': {'required': False},
-            'cycle_point': {'required': False},
-            'cycle_sub': {'read_only': True},
         }
 
     def _check_content_by_audit(self, value):
@@ -181,8 +181,46 @@ class MeetingSerializer(ModelSerializer):
             check_email_list(value)
             return value
 
+    def validate_is_cycle(self, value):
+        """check is_cycle"""
+        if not isinstance(value, bool):
+            logger.error("invalid is_record:{}".format(value))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return value
+
+    def validate_cycle_start_date(self, value):
+        """check the cycle_start_date"""
+        return value
+
+    def validate_cycle_end_date(self, value):
+        """check the cycle_end_date"""
+        return value
+
+    def validate_cycle_start(self, value):
+        """check the cycle start"""
+        return value
+
+    def validate_cycle_end(self, value):
+        """check the cycle end"""
+        return value
+
+    def validate_cycle_type(self, value):
+        """check the cycle type"""
+        if value is not None:
+            return CycleType.check_value(value)
+
+    def validate_cycle_interval(self, value):
+        """check the cycle interval"""
+        if value is not None:
+            return int(value)
+
+    def validate_cycle_point(self, value):
+        """check the cycle point"""
+        return value
+
     def validate(self, attrs):
-        check_duration(attrs["start"], attrs["end"], attrs["date"], datetime.now())
+        if not attrs["is_cycle"]:
+            check_duration(attrs["start"], attrs["end"], attrs["date"], datetime.now())
         if attrs["community"] not in settings.COMMUNITY_HOST.keys():
             logger.error('the community of {} have no resources in COMMUNITY_HOST in settings.'
                          .format(attrs["community"]))
@@ -193,12 +231,12 @@ class MeetingSerializer(ModelSerializer):
         return attrs
 
     def get_bili_status(self, obj):
-        if obj.bili_record:
-            return obj.bili_record.status
+        if obj.bili_records:
+            return obj.bili_records.status
 
     def get_bili_replay_url(self, obj):
-        if obj.bili_record:
-            return obj.bili_record.replay_url
+        if obj.bili_records:
+            return obj.bili_records.replay_url
 
     def get_translate_status(self, obj):
         if obj.obs_records:
@@ -218,64 +256,36 @@ class MeetingSerializer(ModelSerializer):
 
     def get_duration(self, obj):
         """get duration"""
-        return math.ceil(float(obj.end.replace(':', '.'))) - math.floor(float(obj.start.replace(':', '.')))
+        if obj.start and obj.end:
+            return math.ceil(float(obj.end.replace(':', '.'))) - math.floor(float(obj.start.replace(':', '.')))
 
     def get_duration_time(self, obj):
         """get duration time"""
-        return obj.start.split(':')[0] + ':00' + '-' + str(math.ceil(float(obj.end.replace(':', '.')))) + ':00'
-
-    def get_cycle_start_date(self, obj):
-        """get cycle start date, and eg:2025-08-00"""
-        if obj.cycle_date:
-            return obj.cycle_date.start_date
-
-    def get_cycle_end_date(self, obj):
-        """get cycle end date, and eg:2025-08-30"""
-        if obj.cycle_date:
-            return obj.cycle_date.end_date
-
-    def get_cycle_start(self, obj):
-        """get cycle end date, and eg:08:00"""
-        if obj.cycle_date:
-            return obj.cycle_date.start
-
-    def get_cycle_end(self, obj):
-        """get cycle end date, and eg:09:00"""
-        if obj.cycle_date:
-            return obj.cycle_date.end
-
-    def get_cycle_type(self, obj):
-        """get cycle type, and eg:"""
-        if obj.cycle_date:
-            return obj.cycle_date.cycle_type
-
-    def get_cycle_interval(self, obj):
-        """get cycle interval"""
-        if obj.cycle_date:
-            return obj.cycle_date.interval
-
-    def get_cycle_point(self, obj):
-        """get cycle point"""
-        if obj.cycle_date:
-            return obj.cycle_date.point
-
-    def get_cycle_sub(self, obj):
-        """get cycle point"""
-        if obj.cycle_date:
-            return self.__cycle_sub_dao.get_by_mid(obj.mid)
+        if obj.start and obj.end:
+            return obj.start.split(':')[0] + ':00' + '-' + str(math.ceil(float(obj.end.replace(':', '.')))) + ':00'
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["email_list"] = self._to_anonymous_email_list(data.get("email_list"))
+        data["email_list"] = to_anonymous_email_list(data.get("email_list"))
+        if instance.cycle_date:
+            data["cycle_start_date"] = instance.cycle_date.start_date
+            data["cycle_end_date"] = instance.cycle_date.end_date
+            data["cycle_start"] = instance.cycle_date.start
+            data["cycle_end"] = instance.cycle_date.end
+            data["cycle_type"] = instance.cycle_date.cycle_type
+            data["cycle_interval"] = instance.cycle_date.interval
+            data["cycle_point"] = instance.cycle_date.point
+            data["cycle_sub"] = list(self.__cycle_sub_dao.get_by_mid(instance.mid))
+        else:
+            data["cycle_start_date"] = ""
+            data["cycle_end_date"] = ""
+            data["cycle_start"] = ""
+            data["cycle_end"] = ""
+            data["cycle_type"] = ""
+            data["cycle_interval"] = ""
+            data["cycle_point"] = ""
+            data["cycle_sub"] = ""
         return data
-
-    def _to_anonymous_email_list(self, email_list):
-        """get email list"""
-        if email_list:
-            email_strs = email_list.split(";")
-            desensitization_email = [mask_email_full(email) for email in email_strs]
-            return ";".join(desensitization_email)
-        return email_list
 
 
 # noinspection PyMethodMayBeStatic
@@ -286,21 +296,19 @@ class SingleMeetingSerializer(ModelSerializer):
 
     duration = serializers.SerializerMethodField()
     duration_time = serializers.SerializerMethodField()
-    email_list = serializers.SerializerMethodField()
     bili_status = serializers.SerializerMethodField()
     bili_replay_url = serializers.SerializerMethodField()
     translate_status = serializers.SerializerMethodField()
     text_vtt_url = serializers.SerializerMethodField()
     text_json_url = serializers.SerializerMethodField()
     text_video_url = serializers.SerializerMethodField()
-    cycle_start_date = serializers.SerializerMethodField()
-    cycle_end_date = serializers.SerializerMethodField()
-    cycle_start = serializers.SerializerMethodField()
-    cycle_end = serializers.SerializerMethodField()
-    cycle_type = serializers.SerializerMethodField()
-    cycle_interval = serializers.SerializerMethodField()
-    cycle_point = serializers.SerializerMethodField()
-    cycle_sub = serializers.SerializerMethodField()
+
+    cycle_start_date = serializers.CharField(required=False)
+    cycle_end_date = serializers.CharField(required=False)
+    cycle_start = serializers.CharField(required=False)
+    cycle_end = serializers.CharField(required=False)
+    cycle_type = serializers.CharField(required=False)
+    cycle_interval = serializers.CharField(required=False)
 
     class Meta:
         """Meta Meta"""
@@ -308,9 +316,9 @@ class SingleMeetingSerializer(ModelSerializer):
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'duration', 'duration_time',
                   'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url', 'text_json_url',
-                  'text_video_url', 'join_url', 'create_time', 'update_time', 'is_delete',
-                  'is_cycle', 'cycle_start_date', 'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type',
-                  'cycle_interval', 'cycle_point', 'cycle_sub']
+                  'text_video_url', 'join_url', 'create_time', 'update_time', 'is_delete', 'is_cycle',
+                  'cycle_start_date', 'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval',
+                  'obs_records', 'bili_records']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'read_only': True},
@@ -318,9 +326,9 @@ class SingleMeetingSerializer(ModelSerializer):
             'community': {'read_only': True},
             'platform': {'read_only': True},
             'topic': {'required': True},
-            'date': {'required': True},
-            'start': {'required': True},
-            'end': {'required': True},
+            'date': {'required': False},
+            'start': {'required': False},
+            'end': {'required': False},
             'agenda': {'required': False},
             'etherpad': {'required': False},
             'is_record': {'required': True},
@@ -337,17 +345,11 @@ class SingleMeetingSerializer(ModelSerializer):
             'create_time': {'read_only': True},
             'update_time': {'read_only': True},
             'is_delete': {'read_only': True},
+            'obs_records': {'read_only': True},
+            'bili_records': {'read_only': True},
             'duration': {'read_only': True},
             'duration_time': {'read_only': True},
-            'is_cycle': {'required': True},
-            'cycle_start_date': {'read_only': True},
-            'cycle_end_date': {'read_only': True},
-            'cycle_start': {'read_only': True},
-            'cycle_end': {'read_only': True},
-            'cycle_type': {'read_only': True},
-            'cycle_interval': {'read_only': True},
-            'cycle_point': {'read_only': True},
-            'cycle_sub': {'read_only': True},
+            'is_cycle': {'required': True}
         }
 
     def _check_content_by_audit(self, value):
@@ -364,18 +366,21 @@ class SingleMeetingSerializer(ModelSerializer):
 
     def validate_date(self, value):
         """check date"""
-        value = check_date(value)
-        return value.strftime('%Y-%m-%d')
+        if value is not None:
+            value = check_date(value)
+            return value.strftime('%Y-%m-%d')
 
     def validate_start(self, value):
         """check start"""
-        check_time(value)
-        return value
+        if value is not None:
+            check_time(value)
+            return value
 
     def validate_end(self, value):
         """check end"""
-        check_time(value)
-        return value
+        if value is not None:
+            check_time(value)
+            return value
 
     def validate_agenda(self, value):
         """check agenda"""
@@ -398,19 +403,57 @@ class SingleMeetingSerializer(ModelSerializer):
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return value
 
+    def validate_is_cycle(self, value):
+        """check is_cycle"""
+        if not isinstance(value, bool):
+            logger.error("invalid is_record:{}".format(value))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return value
+
+    def validate_cycle_start_date(self, value):
+        """check the cycle_start_date"""
+        return value
+
+    def validate_cycle_end_date(self, value):
+        """check the cycle_end_date"""
+        return value
+
+    def validate_cycle_start(self, value):
+        """check the cycle start"""
+        return value
+
+    def validate_cycle_end(self, value):
+        """check the cycle end"""
+        return value
+
+    def validate_cycle_type(self, value):
+        """check the cycle type"""
+        if value is not None:
+            return CycleType.check_value(value)
+
+    def validate_cycle_interval(self, value):
+        """check the cycle interval"""
+        if value is not None:
+            return int(value)
+
+    def validate_cycle_point(self, value):
+        """check the cycle point"""
+        return value
+
     def validate(self, attrs):
         """all validate data"""
-        check_duration(attrs["start"], attrs["end"], attrs["date"], datetime.now())
+        if not attrs["is_cycle"]:
+            check_duration(attrs["start"], attrs["end"], attrs["date"], datetime.now())
         attrs["update_time"] = datetime.now()
         return attrs
 
     def get_bili_status(self, obj):
-        if obj.bili_record:
-            return obj.bili_record.status
+        if obj.bili_records:
+            return obj.bili_records.status
 
     def get_bili_replay_url(self, obj):
-        if obj.bili_record:
-            return obj.bili_record.replay_url
+        if obj.bili_records:
+            return obj.bili_records.replay_url
 
     def get_translate_status(self, obj):
         if obj.obs_records:
@@ -430,60 +473,36 @@ class SingleMeetingSerializer(ModelSerializer):
 
     def get_duration(self, obj):
         """get duration"""
-        return math.ceil(float(obj.end.replace(':', '.'))) - math.floor(float(obj.start.replace(':', '.')))
+        if obj.start and obj.end:
+            return math.ceil(float(obj.end.replace(':', '.'))) - math.floor(float(obj.start.replace(':', '.')))
 
     def get_duration_time(self, obj):
         """get duration time"""
-        return obj.start.split(':')[0] + ':00' + '-' + str(math.ceil(float(obj.end.replace(':', '.')))) + ':00'
+        if obj.start and obj.end:
+            return obj.start.split(':')[0] + ':00' + '-' + str(math.ceil(float(obj.end.replace(':', '.')))) + ':00'
 
-    def get_cycle_start_date(self, obj):
-        """get cycle start date"""
-        if obj.cycle_date:
-            return obj.cycle_date.start_date
-
-    def get_cycle_end_date(self, obj):
-        """get cycle end date"""
-        if obj.cycle_date:
-            return obj.cycle_date.end_date
-
-    def get_cycle_start(self, obj):
-        """get cycle end date"""
-        if obj.cycle_date:
-            return obj.cycle_date.start
-
-    def get_cycle_end(self, obj):
-        """get cycle end date"""
-        if obj.cycle_date:
-            return obj.cycle_date.end
-
-    def get_cycle_type(self, obj):
-        """get cycle end date"""
-        if obj.cycle_date:
-            return obj.cycle_date.cycle_type
-
-    def get_cycle_interval(self, obj):
-        """get cycle end date"""
-        if obj.cycle_date:
-            return obj.cycle_date.interval
-
-    def get_cycle_point(self, obj):
-        """get cycle end date"""
-        if obj.cycle_date:
-            return obj.cycle_date.point
-
-    def get_cycle_sub(self, obj):
-        """get cycle point"""
-        if obj.cycle_date:
-            return self.__cycle_sub_dao.get_by_mid(obj.mid)
-
-    def get_email_list(self, obj):
-        """get email list"""
-        email_list = obj.email_list
-        if email_list:
-            email_strs = email_list.split(";")
-            desensitization_email = [mask_email_full(email) for email in email_strs]
-            return ";".join(desensitization_email)
-        return email_list
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["email_list"] = to_anonymous_email_list(data.get("email_list"))
+        if instance.cycle_date:
+            data["cycle_start_date"] = instance.cycle_date.start_date
+            data["cycle_end_date"] = instance.cycle_date.end_date
+            data["cycle_start"] = instance.cycle_date.start
+            data["cycle_end"] = instance.cycle_date.end
+            data["cycle_type"] = instance.cycle_date.cycle_type
+            data["cycle_interval"] = instance.cycle_date.interval
+            data["cycle_point"] = instance.cycle_date.point
+            data["cycle_sub"] = list(self.__cycle_sub_dao.get_by_mid(instance.mid))
+        else:
+            data["cycle_start_date"] = ""
+            data["cycle_end_date"] = ""
+            data["cycle_start"] = ""
+            data["cycle_end"] = ""
+            data["cycle_type"] = ""
+            data["cycle_interval"] = ""
+            data["cycle_point"] = ""
+            data["cycle_sub"] = ""
+        return data
 
 
 # noinspection PyMethodMayBeStatic
@@ -491,22 +510,24 @@ class CycleDateSerializer(ModelSerializer):
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
 
     cycle_sub = serializers.SerializerMethodField()
+    is_record = serializers.SerializerMethodField()
 
     class Meta:
-        model = MeetingCycleDate
-        fields = ['mid', 'sub_id', 'date', 'start', 'end', "is_record"]
+        model = MeetingCycleSubMeeting
+        fields = ['mid', 'sub_id', 'date', 'start', 'end', "is_record", "cycle_sub"]
         extra_kwargs = {
             'mid': {'required': True},
             'sub_id': {'required': True},
             'date': {'required': True},
             'start': {'required': True},
             'end': {'required': True},
-            'is_record': {'required': True}
+            'is_record': {'required': True},
+            'cycle_sub': {'read_only': True},
         }
 
     def get_cycle_sub(self, obj):
         """get cycle point"""
-        return self.__cycle_sub_dao.get_by_mid(obj.mid)
+        return list(self.__cycle_sub_dao.get_by_mid(obj.mid))
 
 
 # noinspection PyMethodMayBeStatic

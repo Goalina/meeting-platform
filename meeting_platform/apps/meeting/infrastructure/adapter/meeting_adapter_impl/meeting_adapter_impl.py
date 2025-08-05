@@ -43,9 +43,9 @@ class MeetingAction:
                     end_date=meeting["cycle_end_date"],
                     start=meeting["cycle_start"],
                     end=meeting["cycle_end"],
-                    cycle_type=meeting["cycle_type"],
+                    cycle_type=meeting["cycle_type"].des,
                     interval=meeting["cycle_interval"],
-                    point=meeting["cycle_point"],
+                    point=meeting.get("cycle_point"),
                     topic=meeting["topic"],
                     is_record=meeting["is_record"]
                 )
@@ -90,9 +90,9 @@ class MeetingAction:
                     end_date=meeting["cycle_end_date"],
                     start=meeting["cycle_start"],
                     end=meeting["cycle_end"],
-                    cycle_type=meeting["cycle_type"],
+                    cycle_type=meeting["cycle_type"].des,
                     interval=meeting["cycle_interval"],
-                    point=meeting["cycle_point"],
+                    point=meeting.get("cycle_point"),
                     topic=meeting["topic"],
                     is_record=meeting["is_record"]
                 )
@@ -125,8 +125,8 @@ class MeetingAction:
                 mid=meeting["mid"],
                 sub_id=meeting["sub_id"],
                 date=meeting["date"],
-                start=meeting["cycle_start"],
-                end=meeting["cycle_end"],
+                start=meeting["start"],
+                end=meeting["end"],
                 is_record=meeting["is_record"]
             )
         else:
@@ -226,11 +226,12 @@ class MeetingAdapterImpl(MeetingAdapter):
 
     def update(self, meeting):
         action = self.meeting_action.get_update_action(meeting["platform"], meeting)
-        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
+        status, resp = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
         if not str(status).startswith("20"):
             logger.error('[MeetingAdapterImpl/update] {}/{}: Failed to update meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_MEETING_FAILED_UPDATE)
+        return resp
 
     def update_sub(self, meeting):
         action = self.meeting_action.get_update_sub_action(meeting["platform"], meeting)
@@ -248,8 +249,8 @@ class MeetingAdapterImpl(MeetingAdapter):
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_FAILED)
 
-    def delete_sub(self, meeting, meeting_sub_info):
-        action = self.meeting_action.get_delete_sub_action(meeting["platform"], meeting_sub_info)
+    def delete_sub(self, meeting):
+        action = self.meeting_action.get_delete_sub_action(meeting["platform"], meeting)
         status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
         if not str(status).startswith("20"):
             logger.error('[MeetingAdapterImpl/delete_sub] {}/{}: Failed to update meeting {}'

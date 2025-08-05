@@ -37,7 +37,7 @@ class WkApi(MeetingAdapter):
     update_cycle_sub_path = "/v1/mmc/management/conferences/cyclesubconf"
     delete_path = "/v1/mmc/management/conferences"
     delete_cycle_path = "/v1/mmc/management/cycleconferences"
-    delete_cycle_sub_path = "v1/mmc/management/conferences/cyclesubconf"
+    delete_cycle_sub_path = "/v1/mmc/management/conferences/cyclesubconf?conferenceID={}&type=1"
     participants_path = "/v1/mmc/management/conferences/history/confAttendeeRecord"
     list_history_path = "/v1/mmc/management/conferences/history"
     download_url_path = "/v1/mmc/management/record/downloadurls"
@@ -161,12 +161,14 @@ class WkApi(MeetingAdapter):
                 "endDate": action.end_date,
                 "cycle": action.cycle_type,
                 "interval": action.interval,
-                "point": action.point.split(","),
+                "preRemindDays": 1,
             },
             'conferenceType': 2,
             'vmrFlag': 1,
             'vmrID': self.host_id
         }
+        if action.point:
+            data["cycleParams"]["point"] = action.point.split(","),
         if action.is_record:
             data['isAutoRecord'] = 1
             data['recordType'] = 2
@@ -239,17 +241,17 @@ class WkApi(MeetingAdapter):
         if not isinstance(action, WkUpdateCycleAction):
             raise RuntimeError("[WkApi] action must be the subclass of WkUpdateCycleAction")
         access_token = self._create_proxy_token()
-        start_time = (datetime.datetime.strptime(action.date + action.start, '%Y-%m-%d%H:%M') -
+        start_time = (datetime.datetime.strptime(action.start_date + action.start, '%Y-%m-%d%H:%M') -
                       datetime.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
-        length = int((datetime.datetime.strptime(action.end, '%H:%M') -
-                      datetime.datetime.strptime(action.start, '%H:%M')).seconds / 60)
+        duration_time = int((datetime.datetime.strptime(action.end, '%H:%M') -
+                             datetime.datetime.strptime(action.start, '%H:%M')).seconds / 60)
         headers = {
             'Content-Type': 'application/json',
             'X-Access-Token': access_token
         }
         data = {
             'startTime': start_time,
-            'length': length,
+            'length': duration_time,
             'subject': action.topic,
             'mediaTypes': 'HDVideo',
             'confConfigInfo': {
@@ -261,9 +263,9 @@ class WkApi(MeetingAdapter):
             "cycleParams": {
                 "startDate": action.start_date,
                 "endDate": action.end_date,
+                "cycle": action.cycle_type,
                 "cycle_type": action.cycle_type,
-                "interval": action.interval,
-                "point": action.point.split(","),
+                "interval": action.interval
             },
             'conferenceType': 2,
         }
@@ -274,6 +276,8 @@ class WkApi(MeetingAdapter):
         else:
             data['isAutoRecord'] = 0
             data['recordType'] = 0
+        if action.point:
+            data["cycleParams"]["point"] = action.point.split(",")
         response = requests.put(self._get_url(self.update_cycle_path), params=params, headers=headers,
                                 data=json.dumps(data),
                                 timeout=self.time_out)
@@ -283,16 +287,21 @@ class WkApi(MeetingAdapter):
                          .format(response.status_code, response.content.decode("utf-8")))
             if isinstance(json_data, dict) and json_data.get("error_msg") == "CONF_MODIFY_FAIL_AS_CONF_ALREADY_STARTED":
                 raise MyValidationError(RetCode.STATUS_MEETING_PUT_RUNNING)
+        logger.info(json_data)
         resp_dict = dict()
         resp_dict['mid'] = json_data[0]['conferenceID']
         resp_dict['start_url'] = json_data[0]['chairJoinUri']
         resp_dict['join_url'] = json_data[0]['guestJoinUri']
         resp_dict['sub_info'] = [{"sub_id": sub_config["cycleSubConfID"],
                                   "date": sub_config["startTime"].split(" ")[0],
-                                  "start": sub_config["startTime"].split(" ")[-1],
-                                  "end": sub_config["endTime"].split(" ")[-1],
+                                  "start": (datetime.datetime.strptime(sub_config["startTime"].split(" ")[-1],
+                                                                       "%H:%M") + datetime.timedelta(hours=8)).strftime(
+                                      "%H:%M"),
+                                  "end": (datetime.datetime.strptime(sub_config["endTime"].split(" ")[-1],
+                                                                     "%H:%M") + datetime.timedelta(hours=8)).strftime(
+                                      "%H:%M")
                                   } for sub_config in json_data[0].get("subConfs") or list()]
-        return response.status_code
+        return response.status_code, resp_dict
 
     def update_cycle_sub(self, action):
         if not isinstance(action, WkUpdateCycleSubAction):
@@ -320,13 +329,12 @@ class WkApi(MeetingAdapter):
         response = requests.put(self._get_url(self.update_cycle_sub_path), params=params, headers=headers,
                                 data=json.dumps(data),
                                 timeout=self.time_out)
-        resp_json = response.json()
         if not str(response.status_code).startswith("20"):
             logger.error("[WkApi] modify the cyecle sub meeting failed and code:{} and content:{}"
                          .format(response.status_code, response.content.decode("utf-8")))
+            resp_json = response.content.decode()
             if isinstance(resp_json, dict) and resp_json.get("error_msg") == "CONF_MODIFY_FAIL_AS_CONF_ALREADY_STARTED":
                 raise MyValidationError(RetCode.STATUS_MEETING_PUT_RUNNING)
-        logger.error("receive the cycle sub:{}".format(resp_json))
         return response.status_code
 
     def delete(self, action):
@@ -365,7 +373,6 @@ class WkApi(MeetingAdapter):
                                    timeout=self.time_out)
         if response.status_code != 200 and response.json().get("error_msg") != "CONF_DATA_NOT_FOUND":
             logger.error('[WkApi] Fail to cancel cycle meeting {}, and return data:{}'.format(action.mid,
-                                                                                              action.sub_id,
                                                                                               response.json()))
             return response.status_code
         logger.info('[WkApi] Cancel cycle meeting {}'.format(action.mid))
@@ -383,10 +390,13 @@ class WkApi(MeetingAdapter):
             'type': 1
         }
         body_data = {
-            'cycleSubConfIDs': action.sub_id
+            'cycleSubConfIDs': [action.sub_id]
         }
-        response = requests.delete(self._get_url(self.delete_cycle_sub_path), headers=headers, params=params,
-                                   data=body_data, timeout=self.time_out)
+        logger.error(headers)
+        logger.error(self._get_url(self.delete_cycle_sub_path).format(action.mid))
+        logger.error(json.dumps(body_data))
+        response = requests.delete(self._get_url(self.delete_cycle_sub_path).format(action.mid), headers=headers,
+                                   data=json.dumps(body_data), timeout=self.time_out)
         if response.status_code != 200 and response.json().get("error_msg") != "CONF_DATA_NOT_FOUND":
             logger.error('[WkApi] Fail to cancel cycle sub meeting {}/{}, and return data:{}'.format(action.mid,
                                                                                                      action.sub_id,

@@ -141,7 +141,7 @@ class HandleRecording:
                 if not video_object:
                     raise Exception("upload obs failed")
                 self.translate_adapter_impl.translate(meeting["mid"], video_object)
-                self.meeting_obs_records_dao.update_by_mid(meeting_obj.bili_record.id,
+                self.meeting_obs_records_dao.update_by_mid(meeting_obj.bili_records.id,
                                                            status=UploadStatus.TRANSLATE.value)
                 cache_path[meeting_obj.id] = {
                     "video_path": video_path,

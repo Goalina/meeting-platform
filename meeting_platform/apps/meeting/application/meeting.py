@@ -9,6 +9,8 @@ import logging
 import secrets
 import traceback
 
+from dateutil.relativedelta import relativedelta
+
 from django.conf import settings
 from django.utils import timezone
 from django.forms import model_to_dict
@@ -16,13 +18,14 @@ from django.db.models import Q
 from django.db import transaction
 
 from meeting.domain.primitive.upload_status import UploadStatus
+from meeting.domain.primitive.time_range import TimeRange
+from meeting.domain.primitive.cycle_type import CycleType
 from meeting_platform.utils.common import start_thread, get_cur_date
 from meeting_platform.utils.operation_log import set_log_thread_local, log_key
 from meeting_platform.utils.ret_api import MyValidationError
 from meeting_platform.utils.ret_code import RetCode
 from meeting.infrastructure.adapter.meeting_adapter_impl.meeting_adapter_impl import MeetingAdapterImpl
 from meeting.infrastructure.dao import meeting_dao, meeting_participants_dao
-from meeting.domain.primitive.time_range import TimeRange
 from meeting.infrastructure.adapter.message_adapter_impl.email_adapter_impl import CreateMessageEmailAdapterImpl, \
     DeleteMessageEmailAdapterImpl, UpdateMessageEmailAdapterImpl
 from meeting.infrastructure.adapter.message_adapter_impl.kafka_adapter_impl import CreateMessageKafKaAdapterImpl, \
@@ -47,31 +50,70 @@ class MeetingApp:
     update_message_adapter_impl = [UpdateMessageEmailAdapterImpl, UpdateMessageKafKaAdapterImpl]
     delete_message_adapter_impl = [DeleteMessageEmailAdapterImpl, DeleteMessageKafKaAdapterImpl]
 
+    @staticmethod
+    def _get_cycle_date_by_policy(meeting):
+        meeting_date_list = list()
+        start_date = datetime.datetime.strptime(meeting["cycle_start_date"], "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(meeting["cycle_end_date"], "%Y-%m-%d")
+        while start_date <= end_date:
+            meeting_date_list.append(
+                {
+                    "date": start_date,
+                    "start": meeting["cycle_start"],
+                    "end": meeting["cycle_end"]
+                }
+            )
+            if meeting["cycle_type"] == CycleType.DAY:
+                start_date += datetime.timedelta(days=meeting["cycle_interval"])
+            elif meeting["cycle_type"] == CycleType.Week:
+                start_date += datetime.timedelta(weeks=meeting["cycle_interval"])
+            elif meeting["cycle_type"] == CycleType.DAY:
+                start_date += relativedelta(month=meeting["cycle_interval"])
+            else:
+                logger.info("invalid cycle type")
+                break
+        return meeting_date_list
+
     def _get_and_check_conflict_meetings_by_date(self, meeting, meeting_id=None):
         """check the conflict the meeting, if not conflict and return meeting"""
-        community = meeting["community"]
-        platform = meeting["platform"]
-        date = meeting["date"]
-        start = meeting["start"]
-        end = meeting["end"]
-        start_search = datetime.datetime.strftime(
-            (datetime.datetime.strptime(start, '%H:%M') - datetime.timedelta(minutes=30)),
-            '%H:%M')
-        end_search = datetime.datetime.strftime(
-            (datetime.datetime.strptime(end, '%H:%M') + datetime.timedelta(minutes=30)),
-            '%H:%M')
-        # get the normal the unavailable host
-        meetings = self.meeting_dao.get_conflict_meeting(community, platform, date,
-                                                         start_search, end_search, meeting_id).values()
-        unavailable_host_ids = [meeting['host_id'] for meeting in meetings]
-        # get the cycle host
-        cycle_meetings_mid = self.meeting_cycle_sub_dao.get_by_date(date, start_search, end_search)
-        cycle_meeting = self.meeting_dao.get_by_mid_list(list(set(cycle_meetings_mid)))
-        cycle_host_ids = [meeting['host_id'] for meeting in cycle_meeting if meeting["id"] != meeting_id]
+        unavailable_host_ids = list()
+        unavailable_cycle_host_ids = list()
+        if not meeting["is_cycle"]:
+            community = meeting["community"]
+            platform = meeting["platform"]
+            date = meeting["date"]
+            start = meeting["start"]
+            end = meeting["end"]
+            start_search = datetime.datetime.strftime(
+                (datetime.datetime.strptime(start, '%H:%M') - datetime.timedelta(minutes=30)),
+                '%H:%M')
+            end_search = datetime.datetime.strftime(
+                (datetime.datetime.strptime(end, '%H:%M') + datetime.timedelta(minutes=30)),
+                '%H:%M')
+            # get the normal the unavailable host
+            meetings = self.meeting_dao.get_conflict_meeting(community, platform, date,
+                                                             start_search, end_search, meeting_id).values()
+            unavailable_host_ids = [meeting['host_id'] for meeting in meetings]
+        else:
+            # get the cycle host
+            cycle_meetings_mid = list()
+            cycle_dates = self._get_cycle_date_by_policy(meeting)
+            for cycle_date in cycle_dates:
+                start_search = datetime.datetime.strftime(
+                    (datetime.datetime.strptime(cycle_date["start"], '%H:%M') - datetime.timedelta(minutes=30)),
+                    '%H:%M')
+                end_search = datetime.datetime.strftime(
+                    (datetime.datetime.strptime(cycle_date["end"], '%H:%M') + datetime.timedelta(minutes=30)),
+                    '%H:%M')
+                mid = self.meeting_cycle_sub_dao.get_by_date(cycle_date["date"], start_search, end_search)
+                cycle_meetings_mid.extend(mid)
+            cycle_meeting = self.meeting_dao.get_by_mid_list(list(set(cycle_meetings_mid)))
+            unavailable_cycle_host_ids = [meeting['host_id'] for meeting in cycle_meeting
+                                          if meeting["id"] != meeting_id]
         # get hte all host
         host_info = settings.COMMUNITY_HOST[meeting["community"]][meeting["platform"]]
         host_list = [key["HOST"] for key in host_info]
-        available_host_id = list(set(host_list) - set(unavailable_host_ids) - set(cycle_host_ids))
+        available_host_id = list(set(host_list) - set(unavailable_host_ids) - set(unavailable_cycle_host_ids))
         if len(available_host_id) == 0:
             logger.info('[MeetingApp/_get_and_check_conflict_meetings_by_date] '
                         '{}/{}: no available host'.format(meeting["community"], meeting["platform"]))
@@ -80,13 +122,14 @@ class MeetingApp:
 
     @staticmethod
     def _is_in_prepare_meeting_duration_before_meeting(meeting, start_date_str=None):
-        if start_date_str is None:
-            start_date_str = "{} {}".format(meeting["date"], meeting["start"])
-        start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
-        if int((start_date - get_cur_date()).total_seconds()) < 0:
-            raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE_BY_EXPIRED)
-        if int((start_date - get_cur_date()).total_seconds()) < 60 * 60:
-            raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE)
+        if not meeting["is_cycle"]:
+            if start_date_str is None:
+                start_date_str = "{} {}".format(meeting["date"], meeting["start"])
+            start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
+            if int((start_date - get_cur_date()).total_seconds()) < 0:
+                raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE_BY_EXPIRED)
+            if int((start_date - get_cur_date()).total_seconds()) < 60 * 60:
+                raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE)
 
     @staticmethod
     def _send_message(meeting, message_handler):
@@ -104,11 +147,23 @@ class MeetingApp:
             raise MyValidationError(RetCode.STATUS_MEETING_CREATE_COUNT_LIMIT)
 
     def _check_recurring_meetings(self, meeting):
-        m_count = self.meeting_dao.get_repeat_meeting_by_community_sponsor_date_start_counts(meeting["community"],
-                                                                                             meeting["group_name"],
-                                                                                             meeting["sponsor"],
-                                                                                             meeting["date"],
-                                                                                             meeting["start"])
+        if not meeting["is_cycle"]:
+            m_count = self.meeting_dao.get_repeat_meeting_by_community_sponsor_date_start_counts(meeting["community"],
+                                                                                                 meeting["group_name"],
+                                                                                                 meeting["sponsor"],
+                                                                                                 meeting["date"],
+                                                                                                 meeting["start"])
+        else:
+            mid = self.meeting_dao.get_repeat_meeting_by_cycle_mid(meeting["community"],
+                                                                   meeting["group_name"],
+                                                                   meeting["sponsor"])
+            m_count = self.meeting_cycle_dao.get_by_mid_and_info(mid,
+                                                                 meeting["cycle_start_date"],
+                                                                 meeting["cycle_end_date"],
+                                                                 meeting["cycle_start"],
+                                                                 meeting["cycle_end"],
+                                                                 meeting["cycle_type"].value,
+                                                                 meeting["cycle_interval"])
         if m_count != 0:
             raise MyValidationError(RetCode.STATUS_MEETING_REPEAT_FAILED)
 
@@ -118,10 +173,10 @@ class MeetingApp:
                 obs_record_obj = self.meeting_obs_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
                 meeting["obs_records"] = obs_record_obj
                 bili_record_obj = self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
-                meeting["bili_record"] = bili_record_obj
+                meeting["bili_records"] = bili_record_obj
             else:
                 meeting["obs_records"] = None
-                meeting["bili_record"] = None
+                meeting["bili_records"] = None
             if meeting["is_cycle"]:
                 sub_info = meeting.pop("sub_info")
                 for sub_meeting in sub_info:
@@ -138,13 +193,15 @@ class MeetingApp:
                     "end_date": meeting.pop("cycle_end_date"),
                     "start": meeting.pop("cycle_start"),
                     "end": meeting.pop("cycle_end"),
-                    "cycle_type": meeting.pop("cycle_type"),
+                    "cycle_type": meeting.pop("cycle_type").value,
                     "interval": meeting.pop("cycle_interval"),
-                    "point": meeting.pop("cycle_point"),
+                    "point": meeting.get("cycle_point"),
                 }
                 meeting["cycle_date"] = self.meeting_cycle_dao.create(**cycle_date)
             else:
                 meeting["cycle_date"] = None
+            logger.info(meeting)
+            meeting.pop("start_url")
             return self.meeting_dao.create(**meeting)
 
     def _update_dao(self, meeting_id, meeting):
@@ -157,68 +214,75 @@ class MeetingApp:
                 meeting["obs_records"] = obs_record_obj
                 if not bili_record_obj:
                     bili_record_obj = self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
-                meeting["bili_record"] = bili_record_obj
+                meeting["bili_records"] = bili_record_obj
             else:
                 if obs_record_obj:
+                    self.meeting_dao.update_obs_records_by_mid(meeting["mid"])
                     self.meeting_obs_records_dao.delete_by_mid(meeting["mid"])
                     meeting["obs_records"] = None
                 if bili_record_obj:
+                    self.meeting_dao.update_bili_records_by_mid(meeting["mid"])
                     self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
-                    meeting["bili_record"] = None
+                    meeting["bili_records"] = None
             if meeting["is_cycle"]:
                 sub_info = meeting.pop("sub_info")
+                self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"])
                 for sub_meeting in sub_info:
-                    if self.meeting_cycle_sub_dao.get_count_by_mid_and_sub_id(meeting["mid"],
-                                                                              sub_meeting["sub_id"]) == 0:
-                        self.meeting_cycle_sub_dao.update_by_mid_and_sub_id(meeting["mid"],
-                                                                            sub_meeting["sub_id"]).update(
-                            sub_id=sub_meeting["sub_id"],
-                            date=sub_meeting["date"],
-                            start=sub_meeting["start"],
-                            end=sub_meeting["end"],
-                        )
-                    else:
-                        self.meeting_cycle_sub_dao.create(
-                            mid=meeting["mid"],
-                            sub_id=sub_meeting["sub_id"],
-                            date=sub_meeting["date"],
-                            start=sub_meeting["start"],
-                            end=sub_meeting["end"],
-                        )
+                    self.meeting_cycle_sub_dao.create(
+                        mid=meeting["mid"],
+                        sub_id=sub_meeting["sub_id"],
+                        date=sub_meeting["date"],
+                        start=sub_meeting["start"],
+                        end=sub_meeting["end"],
+                    )
+                cycle_date = {
+                    "mid": meeting["mid"],
+                    "start_date": meeting.get("cycle_start_date"),
+                    "end_date": meeting.get("cycle_end_date"),
+                    "start": meeting.get("cycle_start"),
+                    "end": meeting.get("cycle_end"),
+                    "cycle_type": meeting["cycle_type"].value,
+                    "interval": meeting.get("cycle_interval"),
+                    "point": meeting.get("cycle_point"),
+                }
                 if self.meeting_cycle_dao.get_by_id(meeting["mid"]) is not None:
-                    cycle_date = {
-                        "mid": meeting["mid"],
-                        "start_date": meeting.pop("cycle_start_date"),
-                        "end_date": meeting.pop("cycle_end_date"),
-                        "start": meeting.pop("cycle_start"),
-                        "end": meeting.pop("cycle_end"),
-                        "cycle_type": meeting.pop("cycle_type"),
-                        "interval": meeting.pop("cycle_interval"),
-                        "point": meeting.pop("cycle_point"),
-                    }
                     meeting["cycle_date"] = self.meeting_cycle_dao.create(**cycle_date)
+                else:
+                    del cycle_date["mid"]
+                    self.meeting_cycle_dao.update(meeting["mid"], **cycle_date)
             else:
                 meeting["cycle_date"] = None
-            return self.meeting_dao.update_by_id(meeting_id, **meeting)
+            logger.info(meeting)
+            return self.meeting_dao.update_by_id(meeting_id,
+                                                 topic=meeting["topic"],
+                                                 agenda=meeting["agenda"],
+                                                 is_record=meeting["is_record"],
+                                                 is_cycle=meeting["is_cycle"],
+                                                 date=meeting["date"],
+                                                 start=meeting["start"],
+                                                 end=meeting["end"],
+                                                 obs_records=meeting["obs_records"],
+                                                 bili_records=meeting["bili_records"],
+                                                 )
 
-    def _update_sub_dao(self, meeting, meeting_sub_info):
+    def _update_sub_dao(self, meeting):
         with transaction.atomic():
-            self.meeting_cycle_sub_dao.update_by_mid_and_sub_id(meeting_sub_info["mid"],
-                                                                meeting_sub_info["sub_id"]).update(
-                date=meeting_sub_info["date"],
-                start=meeting_sub_info["start"],
-                end=meeting_sub_info["end"],
-            )
+            self.meeting_cycle_sub_dao.update_by_mid_and_sub_id(meeting["mid"],
+                                                                meeting["sub_id"],
+                                                                date=meeting["date"],
+                                                                start=meeting["start"],
+                                                                end=meeting["end"])
             return self.meeting_dao.update_by_id(meeting["id"], is_record=meeting["is_record"])
 
     def _delete_dao(self, meeting_id, meeting):
         with transaction.atomic():
             meeting_obj = self.meeting_dao.get_by_id(meeting_id)
+            self.meeting_dao.delete_by_id(meeting_id)
             self.meeting_bili_records_dao.delete_by_mid(meeting_obj.mid)
             self.meeting_obs_records_dao.delete_by_mid(meeting_obj.mid)
-            self.meeting_cycle_dao.delete_by_id(meeting["cycle_date"])
+            self.meeting_cycle_dao.delete_by_mid(meeting["mid"])
             self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"])
-            return self.meeting_dao.delete_by_id(meeting_id)
+        return meeting_id
 
     def _delete_sub_dao(self, mid, sub_id):
         return self.meeting_cycle_sub_dao.delete_by_mid_and_sub_id(mid, sub_id)
@@ -264,7 +328,8 @@ class MeetingApp:
         # check not update in the before in start date
         self._is_in_prepare_meeting_duration_before_meeting(meeting)
         # update meeting
-        self.meeting_adapter_impl.update(meeting)
+        resp = self.meeting_adapter_impl.update(meeting)
+        meeting.update(resp)
         # update in database
         result = self._update_dao(meeting_id, meeting)
         # send message
@@ -285,17 +350,18 @@ class MeetingApp:
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
         meeting = model_to_dict(meeting)
         meeting.update({"sequence": meeting["sequence"] + 1})
+        meeting.update(meeting_data)
         # check modify meeting count
         if meeting["sequence"] > settings.MEETING_MODIFY_COUNT + 1:
             raise MyValidationError(RetCode.STATUS_MEETING_MODIFY_COUNT_LIMIT)
         # check meeting-conflict
-        self._get_and_check_conflict_meetings_by_date(meeting, meeting["id"])
+        # self._get_and_check_conflict_meetings_by_date(meeting, meeting["id"])
         # check not update in the before in start date
         self._is_in_prepare_meeting_duration_before_meeting(meeting)
         # update meeting
         self.meeting_adapter_impl.update_sub(meeting)
         # update in database
-        result = self._update_sub_dao(meeting, meeting_sub_info)
+        result = self._update_sub_dao(meeting)
         # send message
         start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
@@ -323,8 +389,10 @@ class MeetingApp:
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting_id))
         return result
 
-    def delete_sub(self, mid, sub_id):
+    def delete_sub(self, sub_id):
         """delete sub meeting"""
+        sub_info = self.meeting_cycle_sub_dao.get_by_sub_id(sub_id)
+        mid = sub_info.mid
         meeting = self.meeting_dao.get_by_mid(mid)
         if not meeting:
             logger.error('[MeetingApp/delete_sub]Invalid meeting id:{}'.format(meeting["id"]))
@@ -335,11 +403,13 @@ class MeetingApp:
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
         meeting = model_to_dict(meeting)
         meeting.update({"sequence": meeting["sequence"] + 1})
+        meeting.update(model_to_dict(sub_info))
+        logger.info(meeting)
         # check not delete in the before in start date
-        start_date_str = "{} {}".format(meeting_sub_info["date"], meeting_sub_info["start"])
+        start_date_str = "{} {}".format(meeting_sub_info.date, meeting_sub_info.start)
         self._is_in_prepare_meeting_duration_before_meeting(meeting, start_date_str)
         # delete meeting
-        self.meeting_adapter_impl.delete_sub(meeting, meeting_sub_info)
+        self.meeting_adapter_impl.delete_sub(meeting)
         # update is_delete=1 in database
         result = self._delete_sub_dao(mid, sub_id)
         # send message

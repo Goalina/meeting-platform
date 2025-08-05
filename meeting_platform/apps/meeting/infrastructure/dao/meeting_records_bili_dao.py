@@ -20,6 +20,10 @@ class MeetingRecordsBiliDao:
         return cls._dao.objects.filter(mid=mid).first()
 
     @classmethod
+    def get_by_id(cls, cur_id):
+        return cls._dao.objects.filter(id=cur_id)
+
+    @classmethod
     def update_records(cls, record_id, **kwargs):
         return cls._dao.objects.filter(id=record_id).update(**kwargs)
 
@@ -29,4 +33,8 @@ class MeetingRecordsBiliDao:
 
     @classmethod
     def delete_by_mid(cls, mid):
-        return cls._dao.objects.filter(mid=mid).delete()
+        return cls._dao.objects.filter(mid=mid).all().delete()
+
+    @classmethod
+    def delete_by_id(cls, cur_id):
+        return cls._dao.objects.filter(id=cur_id).all().delete()

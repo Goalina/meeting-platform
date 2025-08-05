@@ -41,7 +41,9 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
                     OperationLogDesc.OP_DESC_MEETING_CREATE_CODE)
     def create(self, request, *args, **kwargs):
         """create meeting api"""
-        set_log_thread_local(request, log_key, [request.data.get('community'), request.data.get('topic')])
+        set_log_thread_local(request, log_key, [request.data.get('community'),
+                                                request.data.get('topic'),
+                                                request.data.get("is_cycle")])
         meeting = self.get_my_serializer_data(request)
         data = self.app_class.create(meeting)
         return ret_json(data=data)
@@ -144,8 +146,8 @@ class SingleSubMeetingView(MySerializerParse, MyUpdateAPIView, DestroyAPIView):
                     OperationLogDesc.OP_DESC_MEETING_DELETE_SUB_CODE)
     def destroy(self, request, *args, **kwargs):
         """delete meeting by mid"""
-        set_log_thread_local(request, log_key, [request.data.get('mid'), request.data.get('sub_id')])
-        data = self.app_class.delete_sub(request.data.get('mid'), request.data.get('sub_id'))
+        set_log_thread_local(request, log_key, ["", kwargs.get('id')])
+        data = self.app_class.delete_sub(kwargs.get('id'))
         return ret_json(data=data)
 
 

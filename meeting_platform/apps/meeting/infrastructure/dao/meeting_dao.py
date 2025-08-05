@@ -26,7 +26,12 @@ class MeetingDao:
     @classmethod
     def get_repeat_meeting_by_community_sponsor_date_start_counts(cls, community, group_name, sponsor, date, start):
         return cls.dao.objects.filter(community=community, group_name=group_name, sponsor=sponsor,
-                                      date=date, start=start, is_delete=False).count()
+                                      date=date, start=start, is_delete=False, is_cycle=False).count()
+
+    @classmethod
+    def get_repeat_meeting_by_cycle_mid(cls, community, group_name, sponsor):
+        return cls.dao.objects.filter(community=community, group_name=group_name, sponsor=sponsor,
+                                      is_delete=False, is_cycle=True).values_list("mid", flat=True)
 
     @classmethod
     def get_queryset(cls):
@@ -53,8 +58,19 @@ class MeetingDao:
         return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(**kwargs)
 
     @classmethod
+    def update_bili_records_by_mid(cls, mid):
+        return cls.dao.objects.filter(mid=mid, is_delete=0).update(bili_records=None)
+
+    @classmethod
+    def update_obs_records_by_mid(cls, mid):
+        return cls.dao.objects.filter(mid=mid, is_delete=0).update(obs_records=None)
+
+    @classmethod
     def delete_by_id(cls, meeting_id):
-        return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1)
+        return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1,
+                                                                         bili_records=None,
+                                                                         obs_records=None,
+                                                                         cycle_date=None)
 
     @classmethod
     def get_meeting_by_date(cls, community, start_date, end_date, end_time):
@@ -72,5 +88,5 @@ class MeetingDao:
     @classmethod
     def get_meeting_by_bili_records(cls, community, bili_records, start_date, end_date):
         return cls.dao.objects.filter(is_delete=0, community=community,
-                                      is_record=True, bili_record_id__in=bili_records). \
+                                      is_record=True, bili_records_id__in=bili_records). \
             filter(Q(date__gt=start_date) & Q(date__lte=end_date)).all()

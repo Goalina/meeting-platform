@@ -109,3 +109,12 @@ def mask_email_full(email):
         return f"{masked_username}@{masked_domain}.{domain_suffix}"
     except ValueError:
         return str()
+
+
+def to_anonymous_email_list(email_list):
+    """to anonymous email"""
+    if email_list:
+        email_strs = email_list.split(";")
+        desensitization_email = [mask_email_full(email) for email in email_strs]
+        return ";".join(desensitization_email)
+    return email_list

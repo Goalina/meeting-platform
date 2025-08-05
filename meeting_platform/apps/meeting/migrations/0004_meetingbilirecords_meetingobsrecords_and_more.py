@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='meeting',
-            name='bili_record',
+            name='bili_records',
             field=models.OneToOneField(null=True, on_delete=django.db.models.deletion.SET_NULL, to='meeting.meetingbilirecords'),
         ),
         migrations.AddField(

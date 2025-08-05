@@ -68,7 +68,7 @@ class MeetingCycleDate(models.Model):
     end = models.CharField(verbose_name='会议结束时间', max_length=32)
     cycle_type = models.SmallIntegerField(verbose_name="周期类型", choices=CycleType.to_tuple())
     interval = models.IntegerField(verbose_name="子会议时间间隔")
-    point = models.CharField(verbose_name="周期内的会员召开时间", max_length=128)
+    point = models.CharField(verbose_name="周期内的会员召开时间", default="", max_length=128)
 
     objects = models.Manager()
 
@@ -111,7 +111,7 @@ class Meeting(models.Model):
     date = models.CharField(verbose_name='会议日期', max_length=32)
     start = models.CharField(verbose_name='会议开始时间', max_length=32)
     end = models.CharField(verbose_name='会议结束时间', max_length=32)
-    cycle_date = models.OneToOneField(MeetingCycleDate, on_delete=models.SET_NULL, null=True)
+    cycle_date = models.OneToOneField(MeetingCycleDate, on_delete=models.CASCADE, null=True, blank=True)
     agenda = models.TextField(verbose_name='会议议程', default='', null=True, blank=True)
     etherpad = models.CharField(verbose_name='会议纪要etherpad', max_length=256, null=True, blank=True)
     email_list = models.TextField(verbose_name='邮件列表', null=True, blank=True)
@@ -120,8 +120,8 @@ class Meeting(models.Model):
     m_mid = models.CharField(verbose_name='腾讯会议id', max_length=32, null=True, blank=True)
     join_url = models.CharField(verbose_name='进入会议url', max_length=128, null=True, blank=True)
     is_record = models.BooleanField(verbose_name="是否录制", default=False)
-    obs_records = models.OneToOneField(MeetingObsRecords, on_delete=models.SET_NULL, null=True)
-    bili_record = models.OneToOneField(MeetingBiliRecords, on_delete=models.SET_NULL, null=True)
+    obs_records = models.OneToOneField(MeetingObsRecords, on_delete=models.SET_NULL, null=True, blank=True)
+    bili_records = models.OneToOneField(MeetingBiliRecords, on_delete=models.SET_NULL, null=True, blank=True)
     create_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True, null=True, blank=True)
     update_time = models.DateTimeField(verbose_name='修改时间', null=True, blank=True)
     sequence = models.IntegerField(verbose_name='修改次数', default=1)

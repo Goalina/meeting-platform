@@ -7,8 +7,8 @@
 from dataclasses import dataclass
 
 from meeting.infrastructure.adapter.meeting_adapter_impl.actions.base_action import CreateAction, \
-    UpdateAction, DeleteAction, GetParticipantsAction, GetVideoAction, CreateCycleAction, UpdateCycleAction, \
-    UpdateCycleSubAction
+    UpdateAction, DeleteAction, DeleteCycleAction, DeleteCycleSubAction, GetParticipantsAction, \
+    GetVideoAction, CreateCycleAction, UpdateCycleAction, UpdateCycleSubAction
 
 
 @dataclass
@@ -73,12 +73,12 @@ class WkDeleteAction(DeleteAction):
 
 
 @dataclass
-class WkDeleteCycleAction(DeleteAction):
+class WkDeleteCycleAction(DeleteCycleAction):
     mid: str
 
 
 @dataclass
-class WkDeleteCycleSubAction(DeleteAction):
+class WkDeleteCycleSubAction(DeleteCycleSubAction):
     mid: str
     sub_id: str
 
