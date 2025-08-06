@@ -517,7 +517,7 @@ class CycleDateSerializer(ModelSerializer):
         fields = ['mid', 'sub_id', 'date', 'start', 'end', "is_record", "cycle_sub"]
         extra_kwargs = {
             'mid': {'required': True},
-            'sub_id': {'required': True},
+            'sub_id': {'read_only': True},
             'date': {'required': True},
             'start': {'required': True},
             'end': {'required': True},

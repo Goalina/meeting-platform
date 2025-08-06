@@ -37,7 +37,7 @@ class WkApi(MeetingAdapter):
     update_cycle_sub_path = "/v1/mmc/management/conferences/cyclesubconf"
     delete_path = "/v1/mmc/management/conferences"
     delete_cycle_path = "/v1/mmc/management/cycleconferences"
-    delete_cycle_sub_path = "/v1/mmc/management/conferences/cyclesubconf?conferenceID={}&type=1"
+    delete_cycle_sub_path = "/v1/mmc/management/conferences/cyclesubconf"
     participants_path = "/v1/mmc/management/conferences/history/confAttendeeRecord"
     list_history_path = "/v1/mmc/management/conferences/history"
     download_url_path = "/v1/mmc/management/record/downloadurls"
@@ -386,17 +386,14 @@ class WkApi(MeetingAdapter):
             'X-Access-Token': access_token
         }
         params = {
-            'conferenceID': action.mid,
-            'type': 1
+            "conferenceID": action.mid,
+            "type": 1
         }
         body_data = {
             'cycleSubConfIDs': [action.sub_id]
         }
-        logger.error(headers)
-        logger.error(self._get_url(self.delete_cycle_sub_path).format(action.mid))
-        logger.error(json.dumps(body_data))
-        response = requests.delete(self._get_url(self.delete_cycle_sub_path).format(action.mid), headers=headers,
-                                   data=json.dumps(body_data), timeout=self.time_out)
+        response = requests.delete(self._get_url(self.delete_cycle_sub_path), headers=headers, params=params,
+                                   json=body_data, timeout=self.time_out)
         if response.status_code != 200 and response.json().get("error_msg") != "CONF_DATA_NOT_FOUND":
             logger.error('[WkApi] Fail to cancel cycle sub meeting {}/{}, and return data:{}'.format(action.mid,
                                                                                                      action.sub_id,

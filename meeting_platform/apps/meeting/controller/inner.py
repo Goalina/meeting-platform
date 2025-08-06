@@ -136,8 +136,9 @@ class SingleSubMeetingView(MySerializerParse, MyUpdateAPIView, DestroyAPIView):
                     OperationLogDesc.OP_DESC_MEETING_UPDATE_SUB_CODE)
     def update(self, request, *args, **kwargs):
         """update meeting api"""
-        set_log_thread_local(request, log_key, [request.data.get('mid'), request.data.get('sub_id')])
+        set_log_thread_local(request, log_key, [request.data.get('mid'), kwargs.get("id")])
         meeting = self.get_my_serializer_data(request)
+        meeting["sub_id"] = kwargs.get("id")
         data = self.app_class.update_sub(meeting)
         return ret_json(data=data)
 
@@ -146,7 +147,7 @@ class SingleSubMeetingView(MySerializerParse, MyUpdateAPIView, DestroyAPIView):
                     OperationLogDesc.OP_DESC_MEETING_DELETE_SUB_CODE)
     def destroy(self, request, *args, **kwargs):
         """delete meeting by mid"""
-        set_log_thread_local(request, log_key, ["", kwargs.get('id')])
+        set_log_thread_local(request, log_key, [kwargs.get('id')])
         data = self.app_class.delete_sub(kwargs.get('id'))
         return ret_json(data=data)
 

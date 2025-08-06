@@ -392,6 +392,9 @@ class MeetingApp:
     def delete_sub(self, sub_id):
         """delete sub meeting"""
         sub_info = self.meeting_cycle_sub_dao.get_by_sub_id(sub_id)
+        if sub_info is None:
+            logger.error('[MeetingApp/delete_sub]Invalid meeting sub id:{}'.format(sub_id))
+            raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
         mid = sub_info.mid
         meeting = self.meeting_dao.get_by_mid(mid)
         if not meeting:
