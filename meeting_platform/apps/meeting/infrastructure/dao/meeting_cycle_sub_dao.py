@@ -13,6 +13,10 @@ class MeetingCycleSubMeetingDao:
     _dao = MeetingCycleSubMeeting
 
     @classmethod
+    def get_all(cls):
+        return cls._dao.objects.all()
+        
+    @classmethod
     def get_by_mid(cls, mid):
         return cls._dao.objects.filter(mid=mid).all().values()
 

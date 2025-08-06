@@ -16,6 +16,7 @@ from rest_framework.serializers import ModelSerializer
 from meeting.domain.primitive.cycle_type import CycleType
 from meeting.models import Meeting, MeetingObsRecords, MeetingCycleSubMeeting
 from meeting.infrastructure.dao.meeting_cycle_sub_dao import MeetingCycleSubMeetingDao
+from meeting.infrastructure.dao.meeting_dao import MeetingDao
 
 from meeting_platform.utils.check_params import check_field, check_invalid_content, check_email_list, check_date, \
     check_time, check_link, check_duration
@@ -508,13 +509,15 @@ class SingleMeetingSerializer(ModelSerializer):
 # noinspection PyMethodMayBeStatic
 class CycleDateSerializer(ModelSerializer):
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
+    __meeting_dao = MeetingDao()
 
-    cycle_sub = serializers.SerializerMethodField()
     is_record = serializers.SerializerMethodField()
+    cycle_sub = serializers.SerializerMethodField()
+    sponsor = serializers.SerializerMethodField()
 
     class Meta:
         model = MeetingCycleSubMeeting
-        fields = ['mid', 'sub_id', 'date', 'start', 'end', "is_record", "cycle_sub"]
+        fields = ['mid', 'sub_id', 'date', 'start', 'end', "is_record", "cycle_sub", "sponsor"]
         extra_kwargs = {
             'mid': {'required': True},
             'sub_id': {'read_only': True},
@@ -523,11 +526,22 @@ class CycleDateSerializer(ModelSerializer):
             'end': {'required': True},
             'is_record': {'required': True},
             'cycle_sub': {'read_only': True},
+            'sponsor': {'read_only': True},
         }
+
+    def get_is_record(self, obj):
+        meeting_info = self.__meeting_dao.get_by_mid(obj.mid)
+        if meeting_info:
+            return meeting_info.is_record
 
     def get_cycle_sub(self, obj):
         """get cycle point"""
         return list(self.__cycle_sub_dao.get_by_mid(obj.mid))
+
+    def get_sponsor(self, obj):
+        meeting_info = self.__meeting_dao.get_by_mid(obj.mid)
+        if meeting_info:
+            return meeting_info.sponsor
 
 
 # noinspection PyMethodMayBeStatic

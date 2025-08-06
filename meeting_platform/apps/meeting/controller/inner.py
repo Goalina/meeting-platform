@@ -122,23 +122,26 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
         return ret_json(data=data)
 
 
-class SingleSubMeetingView(MySerializerParse, MyUpdateAPIView, DestroyAPIView):
+class SingleSubMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView, RetrieveAPIView, DestroyAPIView):
     """update or delete a meeting"""
-    lookup_field = "id"
+    lookup_field = "sub_id"
     serializer_class = CycleDateSerializer
-    queryset = MeetingApp.meeting_cycle_dao.get_all()
+    queryset = MeetingApp.meeting_cycle_sub_dao.get_all()
     authentication_classes = (BasicAuthentication,)
     permission_classes = (IsAuthenticated,)
     app_class = MeetingApp()
+
+    def get_queryset(self):
+        return self.queryset.filter(sub_id=self.kwargs.get("sub_id"))
 
     @capture_my_validation_exception
     @logger_wrapper(OperationLogModule.OP_MODULE_MEETING, OperationLogType.OP_TYPE_MODIFY,
                     OperationLogDesc.OP_DESC_MEETING_UPDATE_SUB_CODE)
     def update(self, request, *args, **kwargs):
         """update meeting api"""
-        set_log_thread_local(request, log_key, [request.data.get('mid'), kwargs.get("id")])
+        set_log_thread_local(request, log_key, [request.data.get('mid'), kwargs.get("sub_id")])
         meeting = self.get_my_serializer_data(request)
-        meeting["sub_id"] = kwargs.get("id")
+        meeting["sub_id"] = kwargs.get("sub_id")
         data = self.app_class.update_sub(meeting)
         return ret_json(data=data)
 
@@ -147,8 +150,8 @@ class SingleSubMeetingView(MySerializerParse, MyUpdateAPIView, DestroyAPIView):
                     OperationLogDesc.OP_DESC_MEETING_DELETE_SUB_CODE)
     def destroy(self, request, *args, **kwargs):
         """delete meeting by mid"""
-        set_log_thread_local(request, log_key, [kwargs.get('id')])
-        data = self.app_class.delete_sub(kwargs.get('id'))
+        set_log_thread_local(request, log_key, [kwargs.get('sub_id')])
+        data = self.app_class.delete_sub(kwargs.get('sub_id'))
         return ret_json(data=data)
 
 
