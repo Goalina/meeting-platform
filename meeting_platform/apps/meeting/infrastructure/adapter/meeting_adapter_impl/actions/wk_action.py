@@ -28,7 +28,7 @@ class WkCreateCycleAction(CreateCycleAction):
     end: str
     cycle_type: str
     interval: int
-    point: str
+    point: int
     topic: str
     is_record: bool
 
@@ -52,7 +52,7 @@ class WkUpdateCycleAction(UpdateCycleAction):
     end: str
     cycle_type: str
     interval: int
-    point: str
+    point: int
     topic: str
     is_record: bool
 

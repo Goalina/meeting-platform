@@ -168,7 +168,7 @@ class WkApi(MeetingAdapter):
             'vmrID': self.host_id
         }
         if action.point:
-            data["cycleParams"]["point"] = action.point.split(","),
+            data["cycleParams"]["point"] = [action.point]
         if action.is_record:
             data['isAutoRecord'] = 1
             data['recordType'] = 2
@@ -277,7 +277,7 @@ class WkApi(MeetingAdapter):
             data['isAutoRecord'] = 0
             data['recordType'] = 0
         if action.point:
-            data["cycleParams"]["point"] = action.point.split(",")
+            data["cycleParams"]["point"] = [action.point]
         response = requests.put(self._get_url(self.update_cycle_path), params=params, headers=headers,
                                 data=json.dumps(data),
                                 timeout=self.time_out)
@@ -287,6 +287,8 @@ class WkApi(MeetingAdapter):
                          .format(response.status_code, response.content.decode("utf-8")))
             if isinstance(json_data, dict) and json_data.get("error_msg") == "CONF_MODIFY_FAIL_AS_CONF_ALREADY_STARTED":
                 raise MyValidationError(RetCode.STATUS_MEETING_PUT_RUNNING)
+            else:
+                return response.status_code, dict()
         logger.info(json_data)
         resp_dict = dict()
         resp_dict['mid'] = json_data[0]['conferenceID']

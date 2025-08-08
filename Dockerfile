@@ -30,6 +30,8 @@ RUN chmod 550 /home/meetingplatform/meeting-platform/docker-entrypoint.sh
 RUN chmod 550 /usr/share/fonts/simsun.ttc
 RUN chmod -R 750 /home/meetingplatform/meeting-platform/deploy
 RUN rm -rf /home/meetingplatform/meeting-platform/.git
+RUN rm -rf /home/meetingplatform/meeting-platform/.gitignore
+RUN rm -rf /home/meetingplatform/meeting-platform/deploy/config
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN yum remove -y gcc python3-pip procps-ng gdb-gdbserver findutils passwd mirror cpp

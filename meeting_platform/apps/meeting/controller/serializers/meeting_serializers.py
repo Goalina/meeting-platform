@@ -49,6 +49,7 @@ class MeetingSerializer(ModelSerializer):
     cycle_end = serializers.CharField(required=False)
     cycle_type = serializers.CharField(required=False)
     cycle_interval = serializers.CharField(required=False)
+    cycle_point = serializers.CharField(required=False)
 
     class Meta:
         """Meta Meta"""
@@ -56,8 +57,8 @@ class MeetingSerializer(ModelSerializer):
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'join_url', 'create_time', 'update_time',
                   'is_delete', 'is_record', 'duration', 'duration_time', 'is_cycle', 'cycle_start_date',
-                  'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'obs_records',
-                  'bili_records', 'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url',
+                  'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point',
+                  'obs_records', 'bili_records', 'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url',
                   'text_json_url', 'text_video_url', ]
         extra_kwargs = {
             'id': {'read_only': True},
@@ -96,6 +97,7 @@ class MeetingSerializer(ModelSerializer):
             'cycle_end': {'required': False},
             'cycle_type': {'required': False},
             'cycle_interval': {'required': False},
+            'cycle_point': {'required': False},
         }
 
     def _check_content_by_audit(self, value):
@@ -191,19 +193,27 @@ class MeetingSerializer(ModelSerializer):
 
     def validate_cycle_start_date(self, value):
         """check the cycle_start_date"""
-        return value
+        if value:
+            check_date(value)
+            return value
 
     def validate_cycle_end_date(self, value):
         """check the cycle_end_date"""
-        return value
+        if value:
+            check_date(value)
+            return value
 
     def validate_cycle_start(self, value):
         """check the cycle start"""
-        return value
+        if value:
+            check_time(value)
+            return value
 
     def validate_cycle_end(self, value):
         """check the cycle end"""
-        return value
+        if value:
+            check_time(value)
+            return value
 
     def validate_cycle_type(self, value):
         """check the cycle type"""
@@ -217,7 +227,8 @@ class MeetingSerializer(ModelSerializer):
 
     def validate_cycle_point(self, value):
         """check the cycle point"""
-        return value
+        if value is not None:
+            return int(value)
 
     def validate(self, attrs):
         if not attrs["is_cycle"]:
@@ -229,29 +240,38 @@ class MeetingSerializer(ModelSerializer):
         if attrs["platform"] not in settings.COMMUNITY_HOST[attrs["community"]].keys():
             logger.error('platform {} is not exist in COMMUNITY_HOST.'.format(attrs["platform"]))
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        if attrs["is_cycle"] and attrs["platform"].lower() != "welink":
+            logger.error('only wk platform support the cycle meeting.')
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return attrs
 
     def get_bili_status(self, obj):
+        """get bili status"""
         if obj.bili_records:
             return obj.bili_records.status
 
     def get_bili_replay_url(self, obj):
+        """get bili replay url"""
         if obj.bili_records:
             return obj.bili_records.replay_url
 
     def get_translate_status(self, obj):
+        """get translate status"""
         if obj.obs_records:
             return obj.obs_records.status
 
     def get_text_vtt_url(self, obj):
+        """get translate vtt url"""
         if obj.obs_records:
             return obj.obs_records.text_vtt_url
 
     def get_text_json_url(self, obj):
+        """get translate json url"""
         if obj.obs_records:
             return obj.obs_records.text_json_url
 
     def get_text_video_url(self, obj):
+        """get translate video url"""
         if obj.obs_records:
             return obj.obs_records.text_video_url
 
@@ -310,6 +330,7 @@ class SingleMeetingSerializer(ModelSerializer):
     cycle_end = serializers.CharField(required=False)
     cycle_type = serializers.CharField(required=False)
     cycle_interval = serializers.CharField(required=False)
+    cycle_point = serializers.CharField(required=False)
 
     class Meta:
         """Meta Meta"""
@@ -319,7 +340,7 @@ class SingleMeetingSerializer(ModelSerializer):
                   'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url', 'text_json_url',
                   'text_video_url', 'join_url', 'create_time', 'update_time', 'is_delete', 'is_cycle',
                   'cycle_start_date', 'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval',
-                  'obs_records', 'bili_records']
+                  'cycle_point', 'obs_records', 'bili_records']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'read_only': True},
@@ -413,19 +434,27 @@ class SingleMeetingSerializer(ModelSerializer):
 
     def validate_cycle_start_date(self, value):
         """check the cycle_start_date"""
-        return value
+        if value:
+            check_date(value)
+            return value
 
     def validate_cycle_end_date(self, value):
         """check the cycle_end_date"""
-        return value
+        if value:
+            check_date(value)
+            return value
 
     def validate_cycle_start(self, value):
         """check the cycle start"""
-        return value
+        if value:
+            check_time(value)
+            return value
 
     def validate_cycle_end(self, value):
         """check the cycle end"""
-        return value
+        if value:
+            check_time(value)
+            return value
 
     def validate_cycle_type(self, value):
         """check the cycle type"""
@@ -439,7 +468,8 @@ class SingleMeetingSerializer(ModelSerializer):
 
     def validate_cycle_point(self, value):
         """check the cycle point"""
-        return value
+        if value is not None:
+            return int(value)
 
     def validate(self, attrs):
         """all validate data"""
@@ -449,26 +479,32 @@ class SingleMeetingSerializer(ModelSerializer):
         return attrs
 
     def get_bili_status(self, obj):
+        """get bili status"""
         if obj.bili_records:
             return obj.bili_records.status
 
     def get_bili_replay_url(self, obj):
+        """get bili replay url"""
         if obj.bili_records:
             return obj.bili_records.replay_url
 
     def get_translate_status(self, obj):
+        """get translate status"""
         if obj.obs_records:
             return obj.obs_records.status
 
     def get_text_vtt_url(self, obj):
+        """get translate vtt url"""
         if obj.obs_records:
             return obj.obs_records.text_vtt_url
 
     def get_text_json_url(self, obj):
+        """get translate json url"""
         if obj.obs_records:
             return obj.obs_records.text_json_url
 
     def get_text_video_url(self, obj):
+        """get translate video url"""
         if obj.obs_records:
             return obj.obs_records.text_video_url
 

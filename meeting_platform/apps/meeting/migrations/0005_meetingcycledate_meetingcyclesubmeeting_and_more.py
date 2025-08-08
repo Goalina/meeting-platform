@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('end', models.CharField(max_length=32, verbose_name='会议结束时间')),
                 ('cycle_type', models.SmallIntegerField(choices=[(0, 'Day'), (1, 'Week'), (2, 'Month')], verbose_name='周期类型')),
                 ('interval', models.IntegerField(verbose_name='子会议时间间隔')),
-                ('point', models.CharField(max_length=128, verbose_name='周期内的会员召开时间')),
+                ('point', models.IntegerField(verbose_name='周期内的会员召开时间')),
             ],
             options={
                 'verbose_name': 'meetings_cycle_date',

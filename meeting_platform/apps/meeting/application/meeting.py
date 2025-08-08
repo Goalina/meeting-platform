@@ -201,7 +201,10 @@ class MeetingApp:
             else:
                 meeting["cycle_date"] = None
             logger.info(meeting)
-            meeting.pop("start_url")
+            if "start_url" in meeting.keys():
+                meeting.pop("start_url")
+            if "cycle_point" in meeting.keys():
+                meeting.pop("cycle_point")
             return self.meeting_dao.create(**meeting)
 
     def _update_dao(self, meeting_id, meeting):

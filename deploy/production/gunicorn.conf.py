@@ -5,6 +5,9 @@ threads = 4
 worker_class = "custom_worker.SSLCachedWorker"
 certfile = "/vault/secrets/server.crt"
 keyfile = "/vault/secrets/server.key"
+accesslog = "-"
+errorlog = "-"
+loglevel = "info"
 
 # TLS 版本和加密算法配置
 # 允许 TLS 1.2 和 1.3 (Gunicorn 会自动协商最高版本)
