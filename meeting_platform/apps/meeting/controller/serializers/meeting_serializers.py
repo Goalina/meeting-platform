@@ -227,8 +227,15 @@ class MeetingSerializer(ModelSerializer):
 
     def validate_cycle_point(self, value):
         """check the cycle point"""
-        if value is not None:
-            return int(value)
+        try:
+            if value is not None:
+                return int(value)
+        except TypeError as e:
+            logger.error("invalid cycle point:{}".format(e))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        except ValueError as e:
+            logger.error("invalid cycle point:{}".format(e))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
     def validate(self, attrs):
         if not attrs["is_cycle"]:
@@ -468,8 +475,15 @@ class SingleMeetingSerializer(ModelSerializer):
 
     def validate_cycle_point(self, value):
         """check the cycle point"""
-        if value is not None:
-            return int(value)
+        try:
+            if value is not None:
+                return int(value)
+        except TypeError as e:
+            logger.error("invalid cycle point:{}".format(e))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        except ValueError as e:
+            logger.error("invalid cycle point:{}".format(e))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
     def validate(self, attrs):
         """all validate data"""

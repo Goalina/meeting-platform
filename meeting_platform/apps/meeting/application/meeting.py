@@ -110,7 +110,7 @@ class MeetingApp:
             cycle_meeting = self.meeting_dao.get_by_mid_list(list(set(cycle_meetings_mid)))
             unavailable_cycle_host_ids = [meeting['host_id'] for meeting in cycle_meeting
                                           if meeting["id"] != meeting_id]
-        # get hte all host
+        # get the all host
         host_info = settings.COMMUNITY_HOST[meeting["community"]][meeting["platform"]]
         host_list = [key["HOST"] for key in host_info]
         available_host_id = list(set(host_list) - set(unavailable_host_ids) - set(unavailable_cycle_host_ids))
@@ -141,12 +141,14 @@ class MeetingApp:
                 logger.error("[MeetingApp/_send_message] err:{}, and traceback:{}".format(e, traceback.format_exc()))
 
     def _calc_meeting_count(self, meeting):
+        """calc the meeting count"""
         today = timezone.now().date()
         meeting_counts = self.meeting_dao.get_today_meeting_counts(meeting["community"], meeting["sponsor"], today)
         if meeting_counts >= settings.MEETING_CREATE_COUNT:
             raise MyValidationError(RetCode.STATUS_MEETING_CREATE_COUNT_LIMIT)
 
     def _check_recurring_meetings(self, meeting):
+        """check recurring meeting"""
         if not meeting["is_cycle"]:
             m_count = self.meeting_dao.get_repeat_meeting_by_community_sponsor_date_start_counts(meeting["community"],
                                                                                                  meeting["group_name"],
@@ -303,8 +305,6 @@ class MeetingApp:
         meeting_info = self.meeting_adapter_impl.create(meeting["host_id"], meeting)
         meeting.update(meeting_info)
         # create in database
-        logger.info("1----------{}".format(meeting))
-        logger.info("2----------{}".format(meeting_info))
         result = self._save_dao(meeting)
         meeting["id"] = result.id
         # send message
@@ -455,11 +455,20 @@ class MeetingApp:
             date = datetime.datetime.now()
         else:
             date = datetime.datetime.strptime(date, "%Y-%m-%d")
+        # 处理非周期性会议
         start_date = (date - datetime.timedelta(days=31)).strftime('%Y-%m-%d')
         end_date = (date + datetime.timedelta(days=31)).strftime('%Y-%m-%d')
-        queryset = queryset.filter(date__gte=start_date, date__lte=end_date)
-        queryset_data = queryset.distinct().order_by('-date', 'id').values_list("date", flat=True)
-        return [date for date in queryset_data]
+        queryset_data = queryset.filter(date__gte=start_date, date__lte=end_date).\
+            distinct().order_by('-date', 'id').values_list("date", flat=True)
+        normal_data = set(date for date in queryset_data)
+        # 处理周期性会议, 算出一个月的mid
+        cycle_all_mid = self.meeting_cycle_sub_dao.get_all().\
+            filter(date__gte=start_date, date__lte=end_date).values_list("mid", flat=True)
+        cycle_mid = queryset.filter(mid__in=cycle_all_mid).values_list("mid", flat=True)
+        cycle_queryset_data = self.meeting_cycle_sub_dao.get_all().filter(mid__in=cycle_mid).distinct().\
+            order_by('-date', 'id').values_list("date", flat=True)
+        cycle_data = set(date for date in cycle_queryset_data)
+        return list(normal_data.union(cycle_data))
 
     @staticmethod
     def get_time_range_meeting(queryset, time_range):
