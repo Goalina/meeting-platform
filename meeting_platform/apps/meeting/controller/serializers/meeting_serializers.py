@@ -16,6 +16,7 @@ from rest_framework.serializers import ModelSerializer
 from meeting.domain.primitive.cycle_type import CycleType
 from meeting.models import Meeting, MeetingObsRecords, MeetingCycleSubMeeting
 from meeting.infrastructure.dao.meeting_cycle_sub_dao import MeetingCycleSubMeetingDao
+from meeting.infrastructure.dao.meeting_cycle_dao import MeetingCycleDao
 from meeting.infrastructure.dao.meeting_dao import MeetingDao
 
 from meeting_platform.utils.check_params import check_field, check_invalid_content, check_email_list, check_date, \
@@ -32,6 +33,7 @@ logger = logging.getLogger("log")
 class MeetingSerializer(ModelSerializer):
     """MeetingSerializer for get a meeting and create meeting"""
     __audit_client = AuditClient()
+    __cycle_date = MeetingCycleDao()
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
 
     duration = serializers.SerializerMethodField()
@@ -227,15 +229,16 @@ class MeetingSerializer(ModelSerializer):
 
     def validate_cycle_point(self, value):
         """check the cycle point"""
-        try:
-            if value is not None:
-                return int(value)
-        except TypeError as e:
-            logger.error("invalid cycle point:{}".format(e))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-        except ValueError as e:
-            logger.error("invalid cycle point:{}".format(e))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        if value is not None:
+            try:
+                new_values = list()
+                value_list = value.split(",")
+                for value_tmp in value_list:
+                    new_values.append(int(value_tmp))
+                return new_values
+            except (ValueError, TypeError) as e:
+                logger.info("invalid cycle_point:{}, e:{}".format(value, e))
+                raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
     def validate(self, attrs):
         if not attrs["is_cycle"]:
@@ -295,24 +298,25 @@ class MeetingSerializer(ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["email_list"] = to_anonymous_email_list(data.get("email_list"))
-        if instance.cycle_date:
-            data["cycle_start_date"] = instance.cycle_date.start_date
-            data["cycle_end_date"] = instance.cycle_date.end_date
-            data["cycle_start"] = instance.cycle_date.start
-            data["cycle_end"] = instance.cycle_date.end
-            data["cycle_type"] = instance.cycle_date.cycle_type
-            data["cycle_interval"] = instance.cycle_date.interval
-            data["cycle_point"] = instance.cycle_date.point
+        cycle_date = self.__cycle_date.get_by_mid(instance.mid)
+        if cycle_date:
+            data["cycle_start_date"] = cycle_date.start_date
+            data["cycle_end_date"] = cycle_date.end_date
+            data["cycle_start"] = cycle_date.start
+            data["cycle_end"] = cycle_date.end
+            data["cycle_type"] = cycle_date.cycle_type
+            data["cycle_interval"] = cycle_date.interval
+            data["cycle_point"] = cycle_date.point.split(",")
             data["cycle_sub"] = list(self.__cycle_sub_dao.get_by_mid(instance.mid))
         else:
-            data["cycle_start_date"] = ""
-            data["cycle_end_date"] = ""
-            data["cycle_start"] = ""
-            data["cycle_end"] = ""
-            data["cycle_type"] = ""
-            data["cycle_interval"] = ""
-            data["cycle_point"] = ""
-            data["cycle_sub"] = ""
+            data["cycle_start_date"] = None
+            data["cycle_end_date"] = None
+            data["cycle_start"] = None
+            data["cycle_end"] = None
+            data["cycle_type"] = None
+            data["cycle_interval"] = None
+            data["cycle_point"] = None
+            data["cycle_sub"] = list()
         return data
 
 
@@ -321,6 +325,7 @@ class SingleMeetingSerializer(ModelSerializer):
     """UpdateMeetingSerializer for update meeting"""
     __audit_client = AuditClient()
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
+    __cycle_date = MeetingCycleDao()
 
     duration = serializers.SerializerMethodField()
     duration_time = serializers.SerializerMethodField()
@@ -475,15 +480,16 @@ class SingleMeetingSerializer(ModelSerializer):
 
     def validate_cycle_point(self, value):
         """check the cycle point"""
-        try:
-            if value is not None:
-                return int(value)
-        except TypeError as e:
-            logger.error("invalid cycle point:{}".format(e))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-        except ValueError as e:
-            logger.error("invalid cycle point:{}".format(e))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        if value is not None:
+            try:
+                new_values = list()
+                value_list = value.split(",")
+                for value_tmp in value_list:
+                    new_values.append(int(value_tmp))
+                return new_values
+            except (ValueError, TypeError) as e:
+                logger.info("invalid cycle_point:{}, e:{}".format(value, e))
+                raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
     def validate(self, attrs):
         """all validate data"""
@@ -535,24 +541,25 @@ class SingleMeetingSerializer(ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["email_list"] = to_anonymous_email_list(data.get("email_list"))
-        if instance.cycle_date:
-            data["cycle_start_date"] = instance.cycle_date.start_date
-            data["cycle_end_date"] = instance.cycle_date.end_date
-            data["cycle_start"] = instance.cycle_date.start
-            data["cycle_end"] = instance.cycle_date.end
-            data["cycle_type"] = instance.cycle_date.cycle_type
-            data["cycle_interval"] = instance.cycle_date.interval
-            data["cycle_point"] = instance.cycle_date.point
+        cycle_date = self.__cycle_date.get_by_mid(instance.mid)
+        if cycle_date:
+            data["cycle_start_date"] = cycle_date.start_date
+            data["cycle_end_date"] = cycle_date.end_date
+            data["cycle_start"] = cycle_date.start
+            data["cycle_end"] = cycle_date.end
+            data["cycle_type"] = cycle_date.cycle_type
+            data["cycle_interval"] = cycle_date.interval
+            data["cycle_point"] = cycle_date.point.split(",")
             data["cycle_sub"] = list(self.__cycle_sub_dao.get_by_mid(instance.mid))
         else:
-            data["cycle_start_date"] = ""
-            data["cycle_end_date"] = ""
-            data["cycle_start"] = ""
-            data["cycle_end"] = ""
-            data["cycle_type"] = ""
-            data["cycle_interval"] = ""
-            data["cycle_point"] = ""
-            data["cycle_sub"] = ""
+            data["cycle_start_date"] = None
+            data["cycle_end_date"] = None
+            data["cycle_start"] = None
+            data["cycle_end"] = None
+            data["cycle_type"] = None
+            data["cycle_interval"] = None
+            data["cycle_point"] = None
+            data["cycle_sub"] = list()
         return data
 
 

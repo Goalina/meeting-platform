@@ -4,6 +4,8 @@
 # @Author  : Tom_zc
 # @FileName: inner.py
 # @Software: PyCharm
+from django.db.models import Q
+
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import CreateAPIView, DestroyAPIView, GenericAPIView, ListAPIView, RetrieveAPIView
@@ -53,7 +55,7 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
         date = self.request.query_params.get("date")
         if date is not None:
             date = self.serializer_class.check_date(date)
-            self.queryset = self.queryset.filter(date=date)
+            self.queryset = self.queryset.filter(Q(date=date)|Q(cycle_sub_meeting__date=date))
         is_delete = self.request.query_params.get("is_delete")
         if is_delete is not None:
             self.queryset = self.queryset.filter(is_delete=is_delete)
@@ -76,6 +78,7 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
         time_range = self.request.query_params.get("time_range")
         if time_range is not None:
             # 判断时间？weekly, recently, daily,
+            # todo 这里需要优化
             self.queryset = self.app_class.get_time_range_meeting(self.queryset, time_range)
         order_by = self.request.query_params.get("order_by")
         if order_by and order_by not in self.order_by:
@@ -132,6 +135,7 @@ class SingleSubMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIV
     app_class = MeetingApp()
 
     def get_queryset(self):
+        """get the queryset"""
         return self.queryset.filter(sub_id=self.kwargs.get("sub_id"))
 
     @capture_my_validation_exception

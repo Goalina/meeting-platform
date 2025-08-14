@@ -44,7 +44,7 @@ class MeetingAction:
                     start=meeting["cycle_start"],
                     end=meeting["cycle_end"],
                     cycle_type=meeting["cycle_type"].des,
-                    interval=meeting["cycle_interval"],
+                    interval=meeting.get("cycle_interval"),
                     point=meeting.get("cycle_point"),
                     topic=meeting["topic"],
                     is_record=meeting["is_record"]
@@ -91,7 +91,7 @@ class MeetingAction:
                     start=meeting["cycle_start"],
                     end=meeting["cycle_end"],
                     cycle_type=meeting["cycle_type"].des,
-                    interval=meeting["cycle_interval"],
+                    interval=meeting.get("cycle_interval"),
                     point=meeting.get("cycle_point"),
                     topic=meeting["topic"],
                     is_record=meeting["is_record"]

@@ -13,11 +13,16 @@ class MeetingDao:
 
     @classmethod
     def get_conflict_meeting(cls, community, platform, date, start_search, end_search, meeting_id=None):
+        query_set = cls.dao.objects.filter(community=community,
+                                           platform=platform,
+                                           date=date,
+                                           is_delete=0,
+                                           is_cycle=False)
+        query_set = query_set.filter(Q(cycle_date__start__lt=end_search, cycle_date__end__gt=start_search) |
+                                     Q(start__lt=end_search, end__gt=start_search))
         if meeting_id is None:
-            return cls.dao.objects.filter(community=community, platform=platform, is_delete=0, is_cycle=False,
-                                          date=date, end__gt=start_search, start__lt=end_search)
-        return cls.dao.objects.filter(community=community, platform=platform, is_delete=0, is_cycle=False,
-                                      date=date, end__gt=start_search, start__lt=end_search).exclude(id=meeting_id)
+            return query_set.values_list("host_id")
+        return query_set.exclude(id=meeting_id).values_list("host_id")
 
     @classmethod
     def get_today_meeting_counts(cls, community, sponsor, date):
@@ -69,8 +74,7 @@ class MeetingDao:
     def delete_by_id(cls, meeting_id):
         return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1,
                                                                          bili_records=None,
-                                                                         obs_records=None,
-                                                                         cycle_date=None)
+                                                                         obs_records=None)
 
     @classmethod
     def get_meeting_by_date(cls, community, start_date, end_date, end_time):

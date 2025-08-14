@@ -59,47 +59,6 @@ class MeetingObsRecords(models.Model):
         return "{}".format(self.id)
 
 
-class MeetingCycleDate(models.Model):
-    """meeting cycle date model"""
-    mid = models.CharField(verbose_name='会议id', max_length=32)
-    start_date = models.CharField(verbose_name='会议开始日期', max_length=32)
-    end_date = models.CharField(verbose_name='会议结束日期', max_length=32)
-    start = models.CharField(verbose_name='会议开始时间', max_length=32)
-    end = models.CharField(verbose_name='会议结束时间', max_length=32)
-    cycle_type = models.SmallIntegerField(verbose_name="周期类型", choices=CycleType.to_tuple())
-    interval = models.IntegerField(verbose_name="子会议时间间隔")
-    point = models.IntegerField(verbose_name="周期内的会员召开时间", null=True, blank=True)
-
-    objects = models.Manager()
-
-    class Meta:
-        db_table = "meetings_cycle_date"
-        verbose_name = db_table
-        verbose_name_plural = verbose_name
-
-    def __str__(self):
-        return "{}/{}/{}/{}".format(self.mid, self.cycle_type, self.start_date, self.end_date)
-
-
-class MeetingCycleSubMeeting(models.Model):
-    """meeting cycle sub meeting model"""
-    mid = models.CharField(verbose_name='会议id', max_length=32)
-    sub_id = models.CharField(verbose_name='子会议的ID', max_length=32)
-    date = models.CharField(verbose_name='会议日期', max_length=32)
-    start = models.CharField(verbose_name='会议开始时间', max_length=32)
-    end = models.CharField(verbose_name='会议结束时间', max_length=32)
-
-    objects = models.Manager()
-
-    class Meta:
-        db_table = "meetings_cycle_sub_meeting"
-        verbose_name = db_table
-        verbose_name_plural = verbose_name
-
-    def __str__(self):
-        return "{}/{}/{}".format(self.mid, self.sub_id, self.date)
-
-
 class Meeting(models.Model):
     """meeting model"""
     sponsor = models.CharField(verbose_name='发起者', max_length=64)
@@ -108,10 +67,9 @@ class Meeting(models.Model):
     topic = models.CharField(verbose_name='会议主题', max_length=128)
     platform = models.CharField(verbose_name="会议所属平台", max_length=16)
     is_cycle = models.BooleanField(verbose_name="是否周期性会议", default=False)
-    date = models.CharField(verbose_name='会议日期', max_length=32)
-    start = models.CharField(verbose_name='会议开始时间', max_length=32)
-    end = models.CharField(verbose_name='会议结束时间', max_length=32)
-    cycle_date = models.OneToOneField(MeetingCycleDate, on_delete=models.CASCADE, null=True, blank=True)
+    date = models.CharField(verbose_name='会议日期', max_length=32, null=True, blank=True)
+    start = models.CharField(verbose_name='会议开始时间', max_length=32, null=True, blank=True)
+    end = models.CharField(verbose_name='会议结束时间', max_length=32, null=True, blank=True)
     agenda = models.TextField(verbose_name='会议议程', default='', null=True, blank=True)
     etherpad = models.CharField(verbose_name='会议纪要etherpad', max_length=256, null=True, blank=True)
     email_list = models.TextField(verbose_name='邮件列表', null=True, blank=True)
@@ -136,6 +94,49 @@ class Meeting(models.Model):
 
     def __str__(self):
         return "{}/{}/{}".format(self.community, self.mid, self.topic)
+
+
+class MeetingCycleDate(models.Model):
+    """meeting cycle date model"""
+    mid = models.CharField(verbose_name='会议id', max_length=32)
+    start_date = models.CharField(verbose_name='会议开始日期', max_length=32)
+    end_date = models.CharField(verbose_name='会议结束日期', max_length=32)
+    start = models.CharField(verbose_name='会议开始时间', max_length=32)
+    end = models.CharField(verbose_name='会议结束时间', max_length=32)
+    cycle_type = models.SmallIntegerField(verbose_name="周期类型", choices=CycleType.to_tuple())
+    interval = models.IntegerField(verbose_name="子会议时间间隔", null=True, blank=True)
+    point = models.CharField(verbose_name="周期内的会员召开时间", max_length=32, null=True, blank=True)
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="cycle_date", default=None)
+
+    objects = models.Manager()
+
+    class Meta:
+        db_table = "meetings_cycle_date"
+        verbose_name = db_table
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return "{}/{}/{}/{}".format(self.mid, self.cycle_type, self.start_date, self.end_date)
+
+
+class MeetingCycleSubMeeting(models.Model):
+    """meeting cycle sub meeting model"""
+    mid = models.CharField(verbose_name='会议id', max_length=32)
+    sub_id = models.CharField(verbose_name='子会议的ID', max_length=32)
+    date = models.CharField(verbose_name='会议日期', max_length=32)
+    start = models.CharField(verbose_name='会议开始时间', max_length=32)
+    end = models.CharField(verbose_name='会议结束时间', max_length=32)
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="cycle_sub_meeting", default=None)
+
+    objects = models.Manager()
+
+    class Meta:
+        db_table = "meetings_cycle_sub_meeting"
+        verbose_name = db_table
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return "{}/{}/{}".format(self.mid, self.sub_id, self.date)
 
 
 class MeetingParticipants(models.Model):

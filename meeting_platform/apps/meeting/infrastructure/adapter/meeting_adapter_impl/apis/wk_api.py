@@ -161,14 +161,13 @@ class WkApi(MeetingAdapter):
                 "endDate": action.end_date,
                 "cycle": action.cycle_type,
                 "interval": action.interval,
+                "point": action.point,
                 "preRemindDays": 1,
             },
             'conferenceType': 2,
             'vmrFlag': 1,
             'vmrID': self.host_id
         }
-        if action.point:
-            data["cycleParams"]["point"] = [action.point]
         if action.is_record:
             data['isAutoRecord'] = 1
             data['recordType'] = 2
@@ -265,7 +264,8 @@ class WkApi(MeetingAdapter):
                 "endDate": action.end_date,
                 "cycle": action.cycle_type,
                 "cycle_type": action.cycle_type,
-                "interval": action.interval
+                "interval": action.interval,
+                "point": action.point,
             },
             'conferenceType': 2,
         }
@@ -276,8 +276,6 @@ class WkApi(MeetingAdapter):
         else:
             data['isAutoRecord'] = 0
             data['recordType'] = 0
-        if action.point:
-            data["cycleParams"]["point"] = [action.point]
         response = requests.put(self._get_url(self.update_cycle_path), params=params, headers=headers,
                                 data=json.dumps(data),
                                 timeout=self.time_out)
