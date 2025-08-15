@@ -171,7 +171,6 @@ class WkApi(MeetingAdapter):
         if action.is_record:
             data['isAutoRecord'] = 1
             data['recordType'] = 2
-        logger.info(data)
         response = requests.post(self._get_url(self.create_cycle_path), headers=headers, data=json.dumps(data),
                                  timeout=self.time_out)
         resp_dict = dict()
@@ -180,7 +179,6 @@ class WkApi(MeetingAdapter):
                          format(response.status_code, response.content.decode("utf-8")))
             return response.status_code, resp_dict
         json_data = response.json()
-        logger.info(json_data)
         resp_dict['mid'] = json_data[0]['conferenceID']
         resp_dict['start_url'] = json_data[0]['chairJoinUri']
         resp_dict['join_url'] = json_data[0]['guestJoinUri']
@@ -287,7 +285,6 @@ class WkApi(MeetingAdapter):
                 raise MyValidationError(RetCode.STATUS_MEETING_PUT_RUNNING)
             else:
                 return response.status_code, dict()
-        logger.info(json_data)
         resp_dict = dict()
         resp_dict['mid'] = json_data[0]['conferenceID']
         resp_dict['start_url'] = json_data[0]['chairJoinUri']

@@ -44,8 +44,8 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
     def create(self, request, *args, **kwargs):
         """create meeting api"""
         set_log_thread_local(request, log_key, [request.data.get('community'),
-                                                request.data.get('topic'),
-                                                request.data.get("is_cycle")])
+                                                request.data.get("sponsor"),
+                                                request.data.get('topic')])
         meeting = self.get_my_serializer_data(request)
         data = self.app_class.create(meeting)
         return ret_json(data=data)
@@ -55,7 +55,7 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
         date = self.request.query_params.get("date")
         if date is not None:
             date = self.serializer_class.check_date(date)
-            self.queryset = self.queryset.filter(Q(date=date)|Q(cycle_sub_meeting__date=date))
+            self.queryset = self.queryset.filter(Q(date=date) | Q(cycle_sub_meeting__date=date))
         is_delete = self.request.query_params.get("is_delete")
         if is_delete is not None:
             self.queryset = self.queryset.filter(is_delete=is_delete)
@@ -78,7 +78,6 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
         time_range = self.request.query_params.get("time_range")
         if time_range is not None:
             # 判断时间？weekly, recently, daily,
-            # todo 这里需要优化
             self.queryset = self.app_class.get_time_range_meeting(self.queryset, time_range)
         order_by = self.request.query_params.get("order_by")
         if order_by and order_by not in self.order_by:

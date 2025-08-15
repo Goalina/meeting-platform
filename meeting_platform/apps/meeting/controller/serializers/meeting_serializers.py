@@ -309,7 +309,7 @@ class MeetingSerializer(ModelSerializer):
             data["cycle_end"] = cycle_date.end
             data["cycle_type"] = cycle_date.cycle_type
             data["cycle_interval"] = cycle_date.interval
-            data["cycle_point"] = cycle_date.point.split(",")
+            data["cycle_point"] = cycle_date.point.split(",") if cycle_date.point is not None else None
             data["cycle_sub"] = list(self.__cycle_sub_dao.get_by_mid(instance.mid))
         else:
             data["cycle_start_date"] = None
@@ -552,7 +552,7 @@ class SingleMeetingSerializer(ModelSerializer):
             data["cycle_end"] = cycle_date.end
             data["cycle_type"] = cycle_date.cycle_type
             data["cycle_interval"] = cycle_date.interval
-            data["cycle_point"] = cycle_date.point.split(",")
+            data["cycle_point"] = cycle_date.point.split(",") if cycle_date.point is not None else None
             data["cycle_sub"] = list(self.__cycle_sub_dao.get_by_mid(instance.mid))
         else:
             data["cycle_start_date"] = None

@@ -21,20 +21,8 @@ class MeetingCycleSubMeetingDao:
         return cls._dao.objects.filter(mid=mid).all().values()
 
     @classmethod
-    def get_by_date(cls, date):
-        return cls._dao.objects.filter(date=date)
-
-    @classmethod
-    def get_by_date_range(cls, community, platform, date, start_search, end_search, mid):
-        queryset = cls._dao.objects.filter(community=community,
-                                           platform=platform,
-                                           date=date,
-                                           start__lt=start_search,
-                                           end__gt=end_search)
-        if mid is None:
-            return queryset.all().values_list("host_id")
-        else:
-            return queryset.exclude(mid=mid).all().values_list("host_id")
+    def get_by_date_range(cls, start_date, end_date, mid):
+        return cls._dao.objects.filter(date__gte=start_date, date__lte=end_date, mid=mid).values_list("date", flat=True)
 
     @classmethod
     def create(cls, **kwargs):
