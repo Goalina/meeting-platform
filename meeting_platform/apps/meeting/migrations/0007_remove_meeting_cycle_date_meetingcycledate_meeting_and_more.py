@@ -11,10 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='meeting',
-            name='cycle_date',
-        ),
         migrations.AddField(
             model_name='meetingcycledate',
             name='meeting',
