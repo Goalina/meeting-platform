@@ -399,7 +399,7 @@ class MeetingApp:
         start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
         logger.info('[MeetingApp/delete_sub] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
-        return result
+        return result[0]
 
     def get_participants(self, meeting_id):
         """get participants"""
