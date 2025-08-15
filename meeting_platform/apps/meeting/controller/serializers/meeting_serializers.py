@@ -141,8 +141,9 @@ class MeetingSerializer(ModelSerializer):
 
     def validate_date(self, value):
         """check date"""
-        value = check_date(value)
-        return value.strftime('%Y-%m-%d')
+        if value:
+            value = check_date(value)
+            return value.strftime('%Y-%m-%d')
 
     @staticmethod
     def check_date(value):
@@ -151,13 +152,15 @@ class MeetingSerializer(ModelSerializer):
 
     def validate_start(self, value):
         """check start"""
-        check_time(value)
-        return value
+        if value:
+            check_time(value)
+            return value
 
     def validate_end(self, value):
         """check end"""
-        check_time(value)
-        return value
+        if value:
+            check_time(value)
+            return value
 
     def validate_is_record(self, value):
         """check record"""

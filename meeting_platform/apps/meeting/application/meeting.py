@@ -246,8 +246,9 @@ class MeetingApp:
                     "end": meeting.get("cycle_end"),
                     "cycle_type": meeting.get("cycle_type").value,
                     "interval": meeting.get("cycle_interval"),
-                    "point": meeting.get("cycle_point"),
                     "meeting": meeting_obj,
+                    "point": ",".join([str(i) for i in meeting["cycle_point"]])
+                    if meeting.get("cycle_point") is not None else None,
                 }
                 self.meeting_cycle_dao.create(**cycle_date)
             return meeting_obj.id
