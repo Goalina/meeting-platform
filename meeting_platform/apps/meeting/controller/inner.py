@@ -4,6 +4,8 @@
 # @Author  : Tom_zc
 # @FileName: inner.py
 # @Software: PyCharm
+from copy import deepcopy
+
 from django.db.models import Q
 
 from rest_framework.authentication import BasicAuthentication
@@ -52,10 +54,17 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
 
     def get_queryset(self):
         """get the queryset"""
+        finally_queryset = deepcopy(self.queryset)
         date = self.request.query_params.get("date")
         if date is not None:
             date = self.serializer_class.check_date(date)
             self.queryset = self.queryset.filter(Q(date=date) | Q(cycle_sub_meeting__date=date))
+        month = self.request.query_params.get("month")
+        if month is not None:
+            first_date, last_date = self.serializer_class.check_month(month)
+            self.queryset = self.queryset.filter(Q(date__gte=first_date, date__lte=last_date) |
+                                                 Q(cycle_sub_meeting__date__gte=first_date,
+                                                   cycle_sub_meeting__date__lte=last_date))
         is_delete = self.request.query_params.get("is_delete")
         if is_delete is not None:
             self.queryset = self.queryset.filter(is_delete=is_delete)
@@ -91,7 +100,9 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
             order_type = "desc"
         if order_type == "desc":
             order_by = "-{}".format(order_by)
-        return self.queryset.order_by(order_by, 'start')
+        # get the meeting id
+        distinct_ids = self.queryset.values_list("id", flat=True).distinct()
+        return finally_queryset.filter(id__in=list(distinct_ids)).order_by(order_by, 'start')
 
 
 class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView, RetrieveAPIView, DestroyAPIView):

@@ -7,6 +7,7 @@
 
 import logging
 import math
+import calendar
 from datetime import datetime
 
 from django.conf import settings
@@ -149,6 +150,18 @@ class MeetingSerializer(ModelSerializer):
     def check_date(value):
         value = check_date(value)
         return value.strftime('%Y-%m-%d')
+
+    @staticmethod
+    def check_month(value):
+        try:
+            year, month = value.split("-")
+            _, last_day_num = calendar.monthrange(int(year), int(month))
+            first_day = datetime(int(year), int(month), 1).date()
+            last_day = datetime(int(year), int(month), last_day_num).date()
+            return first_day.strftime('%Y-%m-%d'), last_day.strftime('%Y-%m-%d')
+        except Exception as e:
+            logger.error("invalid month:{}, and e:{}".format(value, e))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
     def validate_start(self, value):
         """check start"""
