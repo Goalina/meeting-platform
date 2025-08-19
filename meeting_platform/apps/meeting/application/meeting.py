@@ -60,7 +60,7 @@ class MeetingApp:
             meeting_date_list.append({"date": meeting["date"], "start": meeting["start"], "end": meeting["end"]})
         else:
             meeting_date_list = get_cycle_date_by_policy(meeting)
-
+        logger.info("get the date list:{}".format(meeting_date_list))
         for cycle_date in meeting_date_list:
             start_search = datetime.datetime.strftime(
                 (datetime.datetime.strptime(cycle_date["start"], '%H:%M') - datetime.timedelta(minutes=30)),
@@ -210,8 +210,8 @@ class MeetingApp:
                     meeting["bili_records"] = None
             if meeting["is_cycle"]:
                 meeting_obj = self.meeting_dao.get_by_mid(meeting["mid"])
-                # TODO 这里全部删除是否会有问题呢？
-                self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"])
+                cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
+                self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
                 for sub_meeting in meeting.get("sub_info"):
                     self.meeting_cycle_sub_dao.create(
                         mid=meeting["mid"],
@@ -261,11 +261,12 @@ class MeetingApp:
             return result
 
     def _delete_dao(self, meeting_id, meeting):
+        cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
         with transaction.atomic():
             self.meeting_dao.delete_by_id(meeting_id)
             self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
             self.meeting_obs_records_dao.delete_by_mid(meeting["mid"])
-            self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"])
+            self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
         return meeting_id
 
     def _delete_sub_dao(self, mid, sub_id):
@@ -287,6 +288,7 @@ class MeetingApp:
         result_id = self._save_dao(meeting)
         meeting["id"] = result_id
         # send message
+        meeting["action"] = "create_meeting"
         start_thread(self._send_message, (meeting, self.create_message_adapter_impl))
         logger.info('[MeetingApp/create] {}/{}: create meeting which mid is {} and id is {}.'.
                     format(meeting["community"], meeting["platform"], meeting["mid"], result_id))
@@ -315,6 +317,7 @@ class MeetingApp:
         # update in database
         result = self._update_dao(meeting_id, meeting)
         # send message
+        meeting["action"] = "update_meeting"
         start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
@@ -345,6 +348,7 @@ class MeetingApp:
         # update in database
         result = self._update_sub_dao(meeting)
         # send message
+        meeting["action"] = "update_sub_meeting"
         start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
@@ -366,6 +370,7 @@ class MeetingApp:
         # update is_delete=1 in database
         result = self._delete_dao(meeting_id, meeting)
         # send message
+        meeting["action"] = "delete_meeting"
         start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
         logger.info('[MeetingApp/delete] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting_id))
@@ -396,6 +401,7 @@ class MeetingApp:
         # update is_delete=1 in database
         result = self._delete_sub_dao(mid, sub_id)
         # send message
+        meeting["action"] = "delete_sub_meeting"
         start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
         logger.info('[MeetingApp/delete_sub] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))

@@ -269,6 +269,9 @@ class MeetingSerializer(ModelSerializer):
         if attrs["is_cycle"] and attrs["platform"].lower() != "welink":
             logger.error('only wk platform support the cycle meeting.')
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        if attrs["is_cycle"] and attrs["cycle_type"] == CycleType.Month and attrs["cycle_interval"] != 1:
+            logger.error('month not support interval not equal one.')
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return attrs
 
     def get_bili_status(self, obj):

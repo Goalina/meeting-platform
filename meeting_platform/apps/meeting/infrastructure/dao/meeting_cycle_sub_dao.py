@@ -41,8 +41,8 @@ class MeetingCycleSubMeetingDao:
         return cls._dao.objects.filter(mid=mid, sub_id=sub_id).delete()
 
     @classmethod
-    def delete_by_mid(cls, mid):
-        return cls._dao.objects.filter(mid=mid).delete()
+    def delete_by_mid(cls, mid, cur_date_str):
+        return cls._dao.objects.filter(mid=mid, date__gt=cur_date_str).delete()
 
     @classmethod
     def update_by_mid_and_sub_id(cls, mid, sub_id, **kwargs):

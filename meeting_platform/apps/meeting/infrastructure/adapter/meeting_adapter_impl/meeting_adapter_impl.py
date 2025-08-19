@@ -252,7 +252,7 @@ class MeetingAdapterImpl(MeetingAdapter):
     def delete_sub(self, meeting):
         action = self.meeting_action.get_delete_sub_action(meeting["platform"], meeting)
         status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
-        if not str(status).startswith("20"):
+        if not str(status).startswith("20") and status != 404:
             logger.error('[MeetingAdapterImpl/delete_sub] {}/{}: Failed to update meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_MEETING_FAILED_UPDATE)
