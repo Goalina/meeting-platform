@@ -53,6 +53,7 @@ class EmailTemplate:
 
     def __init__(self, meeting):
         """meeting must be dict"""
+        print(meeting)
         self.email_list = meeting["email_list"]
         if self.email_list:
             toaddrs = self.email_list.replace(' ', '').replace('，', ',').replace(';', ',').replace('；', ',')
@@ -60,23 +61,36 @@ class EmailTemplate:
         else:
             self.toaddrs_list = list()
         self.topic = meeting["topic"]
-        self.etherpad = meeting["etherpad"]
+        self.etherpad = meeting["etherpad"] or ""
         self.join_url = meeting["join_url"]
         self.sig_name = meeting["group_name"]
         self.agenda = meeting["agenda"]
         self.record = meeting["is_record"]
         self.platform = meeting["platform"].replace('TENCENT', 'Tencent'). \
             replace('WELINK', 'WeLink').replace("ZOOM", 'Zoom')
-        self.date = meeting["date"]
-        self.start = meeting["start"]
-        self.end = meeting["end"]
-        self.start_time = ' '.join([self.date, self.start])
+        self.date = meeting.get("date")
+        self.start = meeting.get("start")
+        self.end = meeting.get("end")
         portal_info = settings.COMMUNITY_PORTAL[meeting["community"]]
         self.portal_zh = portal_info["PORTAL_ZH"]
         self.portal_en = portal_info["PORTAL_EN"]
         self.community = meeting["community"]
         self.mid = meeting["mid"]
         self.sequence = meeting.get("sequence") or 0
+        self.sub_info = meeting.get("sub_info")
+        self.start_date = meeting.get("start_date")
+        self.end_date = meeting.get("end_date")
+        self.cycle_start = meeting.get("cycle_start")
+        self.cycle_end = meeting.get("cycle_end")
+        self.cycle_type = meeting.get("cycle_type")
+        self.cycle_interval = meeting.get("cycle_interval")
+        self.cycle_point = meeting.get("cycle_point")
+        self.is_cycle = meeting.get("is_cycle")
+        if not self.is_cycle:
+            self.start_time = ' '.join([self.date, self.start])
+        else:
+            self.start_time = '{}-{} {} {}'.format(self.start_date, self.end_date, self.cycle_start, self.cycle_end)
+        self.action = meeting.get("action")
 
     # noinspection DuplicatedCode
     def get_create_meeting_template_by_meetings_info(self):
@@ -105,15 +119,25 @@ class EmailTemplate:
         return MIMEText(body_of_email, _charset='utf-8')
 
     def __get_before_start_and_end(self):
-        before_start = datetime.datetime.strptime(self.date + ' ' + self.start, '%Y-%m-%d %H:%M') - \
-                       datetime.timedelta(hours=8)
-        before_end = datetime.datetime.strptime(self.date + ' ' + self.end, '%Y-%m-%d %H:%M') - datetime.timedelta(
-            hours=8)
+
+        if not self.is_cycle:
+            meeting_date = self.date
+            meeting_start = self.start
+            meeting_end = self.end
+        else:
+            sub_info = sorted(self.sub_info, key=lambda x: x["date"])
+            meeting_date = sub_info[0]["date"]
+            meeting_start = sub_info[0]["start"]
+            meeting_end = sub_info[0]["end"]
+        before_start = datetime.datetime.strptime(
+            meeting_date + ' ' + meeting_start, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
+        before_end = datetime.datetime.strptime(
+            meeting_date + ' ' + meeting_end, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
         dt_start = before_start.replace(tzinfo=pytz.utc)
         dt_end = before_end.replace(tzinfo=pytz.utc)
         return dt_start, dt_end
 
-    def __get_icalendar_event(self):
+    def __get_add_icalendar_event(self):
         dt_start, dt_end = self.__get_before_start_and_end()
         event = icalendar.Event()
         event.add('attendee', ','.join(self.toaddrs_list))
@@ -121,6 +145,27 @@ class EmailTemplate:
         event.add('dtstart', dt_start)
         event.add('dtend', dt_end)
         event.add('dtstamp', dt_start)
+        event.add('uid', self.platform + str(self.mid))
+        event.add('sequence', self.sequence)
+        if self.is_cycle:
+            r_date_list = list()
+            if self.action in ["update_sub_meeting", "delete_sub_meeting"]:
+                event.add('recurrence-id', dt_start)
+            else:
+                for meeting in self.sub_info:
+                    if meeting["date"] != dt_start:
+                        r_date_list.append(
+                            datetime.datetime.strptime(meeting['date'] + ' ' + meeting['start'], '%Y-%m-%d %H:%M')
+                            - datetime.timedelta(hours=8)
+                        )
+                if r_date_list:
+                    event.add("rdate", r_date_list)
+        return event
+
+    def __get_delete_icalendar_event(self):
+        event = icalendar.Event()
+        event.add('attendee', ','.join(self.toaddrs_list))
+        event.add('summary', self.topic)
         event.add('uid', self.platform + str(self.mid))
         event.add('sequence', self.sequence)
         return event
@@ -131,7 +176,7 @@ class EmailTemplate:
         cal.add('prodid', '-//{} conference calendar'.format(self.community))
         cal.add('version', '2.0')
         cal.add('method', 'REQUEST')
-        event = self.__get_icalendar_event()
+        event = self.__get_add_icalendar_event()
         alarm = icalendar.Alarm()
         alarm.add('action', 'DISPLAY')
         alarm.add('description', 'Reminder')
@@ -153,7 +198,7 @@ class EmailTemplate:
         cal.add('prodid', '-//{} conference calendar'.format(self.community))
         cal.add('version', '2.0')
         cal.add('method', 'CANCEL')
-        event = self.__get_icalendar_event()
+        event = self.__get_delete_icalendar_event()
         event.add('sequence', self.sequence)
         cal.add_component(event)
         part = MIMEBase('text', 'calendar', method='CANCEL')
@@ -213,8 +258,8 @@ class UpdateMessageEmailAdapterImpl(MessageAdapter):
         email_adapter = EmailAdapter(email_meeting["community"])
         email_adapter.send_message(email_template.toaddrs_list, msg)
         logger.info('[UpdateMessageEmailAdapterImpl/send_message] send update meeting email success: {}/{}/{}/{}/{}'.
-                    format(email_meeting["community"], email_meeting["platform"], email_meeting["topic"], email_meeting["mid"],
-                           email_meeting["id"]))
+                    format(email_meeting["community"], email_meeting["platform"], email_meeting["topic"],
+                           email_meeting["mid"], email_meeting["id"]))
 
 
 class DeleteMessageEmailAdapterImpl(MessageAdapter):
