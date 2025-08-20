@@ -19,7 +19,8 @@ from meeting.domain.primitive.upload_status import UploadStatus
 from meeting.domain.primitive.time_range import TimeRange
 from meeting.infrastructure.adapter.meeting_adapter_impl.meeting_adapter_impl import MeetingAdapterImpl
 from meeting.infrastructure.adapter.message_adapter_impl.email_adapter_impl import CreateMessageEmailAdapterImpl, \
-    DeleteMessageEmailAdapterImpl, UpdateMessageEmailAdapterImpl, DeleteSubMessageEmailAdapterImpl, UpdateSubMessageEmailAdapterImpl
+    DeleteMessageEmailAdapterImpl, UpdateMessageEmailAdapterImpl, DeleteSubMessageEmailAdapterImpl, \
+    UpdateSubMessageEmailAdapterImpl
 from meeting.infrastructure.adapter.message_adapter_impl.kafka_adapter_impl import CreateMessageKafKaAdapterImpl, \
     DeleteMessageKafKaAdapterImpl, UpdateMessageKafKaAdapterImpl
 from meeting.infrastructure.dao import meeting_dao, meeting_participants_dao
@@ -412,7 +413,7 @@ class MeetingApp:
         start_thread(self._send_message, (meeting, self.delete_sub_message_adapter_impl))
         logger.info('[MeetingApp/delete_sub] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
-        return result[0]
+        return result
 
     def get_participants(self, meeting_id):
         """get participants"""
