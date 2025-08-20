@@ -26,7 +26,7 @@ class MeetingRecordsObsDao:
 
     @classmethod
     def update_by_mid(cls, mid, status, **kwargs):
-        return cls._dao.objects.filter(id=mid).update(status=status, **kwargs)
+        return cls._dao.objects.filter(mid=mid).update(status=status, **kwargs)
 
     @classmethod
     def create(cls, status, mid):
