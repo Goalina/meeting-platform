@@ -356,7 +356,7 @@ class MeetingApp:
         # update in database
         result = self._update_sub_dao(meeting)
         # send message
-        meeting["action"] = "update_sub_meeting"
+        meeting["action"] = "update_meeting"
         start_thread(self._send_message, (meeting, self.update_sub_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
@@ -409,7 +409,7 @@ class MeetingApp:
         # update is_delete=1 in database
         result = self._delete_sub_dao(mid, sub_id, meeting)
         # send message
-        meeting["action"] = "delete_sub_meeting"
+        meeting["action"] = "delete_meeting"
         start_thread(self._send_message, (meeting, self.delete_sub_message_adapter_impl))
         logger.info('[MeetingApp/delete_sub] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
