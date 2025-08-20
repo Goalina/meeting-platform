@@ -71,8 +71,9 @@ class MeetingDao:
         return cls.dao.objects.filter(mid=mid, is_delete=0).update(obs_records=None)
 
     @classmethod
-    def delete_by_id(cls, meeting_id):
+    def delete_by_id(cls, meeting_id, sequence):
         return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1,
+                                                                         sequence=sequence,
                                                                          bili_records=None,
                                                                          obs_records=None)
 

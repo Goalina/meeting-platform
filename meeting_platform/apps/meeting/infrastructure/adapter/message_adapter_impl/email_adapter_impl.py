@@ -119,7 +119,6 @@ class EmailTemplate:
         return MIMEText(body_of_email, _charset='utf-8')
 
     def __get_before_start_and_end(self):
-
         if not self.is_cycle:
             meeting_date = self.date
             meeting_start = self.start
@@ -162,12 +161,48 @@ class EmailTemplate:
                     event.add("rdate", r_date_list)
         return event
 
+    def __get_update_sub_icalendar_event(self):
+        before_start = datetime.datetime.strptime(
+            self.date + ' ' + self.start, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
+        before_end = datetime.datetime.strptime(
+            self.date + ' ' + self.end, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
+        dt_start = before_start.replace(tzinfo=pytz.utc)
+        dt_end = before_end.replace(tzinfo=pytz.utc)
+        event = icalendar.Event()
+        event.add('attendee', ','.join(self.toaddrs_list))
+        event.add('summary', self.topic)
+        event.add('dtstart', dt_start)
+        event.add('dtend', dt_end)
+        event.add('dtstamp', dt_start)
+        event.add('uid', self.platform + str(self.mid))
+        event.add('sequence', self.sequence)
+        event.add('recurrence-id', dt_start)
+        return event
+
     def __get_delete_icalendar_event(self):
         event = icalendar.Event()
         event.add('attendee', ','.join(self.toaddrs_list))
         event.add('summary', self.topic)
         event.add('uid', self.platform + str(self.mid))
         event.add('sequence', self.sequence)
+        return event
+
+    def __get_sub_delete_icalendar_event(self):
+        before_start = datetime.datetime.strptime(
+            self.date + ' ' + self.start, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
+        before_end = datetime.datetime.strptime(
+            self.date + ' ' + self.end, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
+        dt_start = before_start.replace(tzinfo=pytz.utc)
+        dt_end = before_end.replace(tzinfo=pytz.utc)
+        event = icalendar.Event()
+        event.add('attendee', ','.join(self.toaddrs_list))
+        event.add('summary', self.topic)
+        event.add('dtstart', dt_start)
+        event.add('dtend', dt_end)
+        event.add('dtstamp', dt_start)
+        event.add('uid', self.platform + str(self.mid))
+        event.add('sequence', self.sequence)
+        event.add('recurrence-id', dt_start)
         return event
 
     # noinspection DuplicatedCode
@@ -193,12 +228,48 @@ class EmailTemplate:
         part.add_header('Path', filename)
         return part
 
+    def update_sub_calender_by_meeting_info(self):
+        cal = icalendar.Calendar()
+        cal.add('prodid', '-//{} conference calendar'.format(self.community))
+        cal.add('version', '2.0')
+        cal.add('method', 'REQUEST')
+        event = self.__get_update_sub_icalendar_event()
+        alarm = icalendar.Alarm()
+        alarm.add('action', 'DISPLAY')
+        alarm.add('description', 'Reminder')
+        alarm.add('TRIGGER;RELATED=START', '-PT15M')
+        event.add_component(alarm)
+        cal.add_component(event)
+        filename = 'invite.ics'
+        part = MIMEBase('text', 'calendar', method='REQUEST', name=filename)
+        part.set_payload(cal.to_ical())
+        encoders.encode_base64(part)
+        part.add_header('Content-Description', filename)
+        part.add_header('Content-class', 'urn:content-classes:calendarmessage')
+        part.add_header('Filename', filename)
+        part.add_header('Path', filename)
+        return part
+
     def remove_calender_by_meeting_info(self):
         cal = icalendar.Calendar()
         cal.add('prodid', '-//{} conference calendar'.format(self.community))
         cal.add('version', '2.0')
         cal.add('method', 'CANCEL')
         event = self.__get_delete_icalendar_event()
+        event.add('sequence', self.sequence)
+        cal.add_component(event)
+        part = MIMEBase('text', 'calendar', method='CANCEL')
+        part.set_payload(cal.to_ical())
+        encoders.encode_base64(part)
+        part.add_header('Content-class', 'urn:content-classes:calendarmessage')
+        return part
+
+    def remove_sub_calender_by_meeting_info(self):
+        cal = icalendar.Calendar()
+        cal.add('prodid', '-//{} conference calendar'.format(self.community))
+        cal.add('version', '2.0')
+        cal.add('method', 'CANCEL')
+        event = self.__get_sub_delete_icalendar_event()
         event.add('sequence', self.sequence)
         cal.add_component(event)
         part = MIMEBase('text', 'calendar', method='CANCEL')
@@ -262,6 +333,35 @@ class UpdateMessageEmailAdapterImpl(MessageAdapter):
                            email_meeting["mid"], email_meeting["id"]))
 
 
+class UpdateSubMessageEmailAdapterImpl(MessageAdapter):
+    @func_retry()
+    def send_message(self, meeting):
+        email_meeting = copy.deepcopy(meeting)
+        email_meeting["topic"] = '[Update] ' + email_meeting["topic"]
+        email_template = EmailTemplate(email_meeting)
+        if not email_template.toaddrs_list:
+            logger.info('[UpdateSubMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}/{}/{}'.format(
+                email_meeting["community"], email_meeting["platform"], email_meeting["topic"], email_meeting["mid"],
+                email_meeting["id"]))
+            return
+        # 构造邮件
+        msg = MIMEMultipart()
+        # 添加邮件主体
+        content = email_template.get_create_meeting_template_by_meetings_info()
+        msg.attach(content)
+        # 添加日历
+        part = email_template.update_sub_calender_by_meeting_info()
+        msg.attach(part)
+        # 完善邮件信息
+        msg['Subject'] = email_meeting["topic"]
+        msg['To'] = ','.join(email_template.toaddrs_list)
+        email_adapter = EmailAdapter(email_meeting["community"])
+        email_adapter.send_message(email_template.toaddrs_list, msg)
+        logger.info('[UpdateSubMessageEmailAdapterImpl/send_message] send update meeting email success: {}/{}/{}/{}/{}'.
+                    format(email_meeting["community"], email_meeting["platform"], email_meeting["topic"],
+                           email_meeting["mid"], email_meeting["id"]))
+
+
 class DeleteMessageEmailAdapterImpl(MessageAdapter):
     @func_retry()
     def send_message(self, meeting):
@@ -287,5 +387,34 @@ class DeleteMessageEmailAdapterImpl(MessageAdapter):
         email_adapter = EmailAdapter(email_meeting["community"])
         email_adapter.send_message(email_template.toaddrs_list, msg)
         logger.info('[DeleteMessageAdapterImpl/send_message] send cancel email success: {}/{}/{}/{}/{}'.format(
+            email_meeting["community"], email_meeting["platform"], email_meeting["topic"], email_meeting["mid"],
+            email_meeting["id"]))
+
+
+class DeleteSubMessageEmailAdapterImpl(MessageAdapter):
+    @func_retry()
+    def send_message(self, meeting):
+        email_meeting = copy.deepcopy(meeting)
+        email_meeting["topic"] = '[Cancel] ' + email_meeting["topic"]
+        email_template = EmailTemplate(email_meeting)
+        if not email_template.toaddrs_list:
+            logger.info('[DeleteSubMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}/{}/{}'.format(
+                email_meeting["community"], email_meeting["platform"], email_meeting["topic"], email_meeting["mid"],
+                email_meeting["id"]))
+            return
+        # 构造邮件
+        msg = MIMEMultipart()
+        # 添加邮件主体
+        content = email_template.get_delete_meeting_template_by_meeting_info()
+        msg.attach(content)
+        # 取消日历
+        part = email_template.remove_sub_calender_by_meeting_info()
+        msg.attach(part)
+        # 完善邮件信息
+        msg['Subject'] = email_meeting["topic"]
+        msg['To'] = ",".join(email_template.toaddrs_list)
+        email_adapter = EmailAdapter(email_meeting["community"])
+        email_adapter.send_message(email_template.toaddrs_list, msg)
+        logger.info('[DeleteSubMessageEmailAdapterImpl/send_message] send cancel email success: {}/{}/{}/{}/{}'.format(
             email_meeting["community"], email_meeting["platform"], email_meeting["topic"], email_meeting["mid"],
             email_meeting["id"]))

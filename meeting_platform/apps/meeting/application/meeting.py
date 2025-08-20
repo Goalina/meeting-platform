@@ -19,7 +19,7 @@ from meeting.domain.primitive.upload_status import UploadStatus
 from meeting.domain.primitive.time_range import TimeRange
 from meeting.infrastructure.adapter.meeting_adapter_impl.meeting_adapter_impl import MeetingAdapterImpl
 from meeting.infrastructure.adapter.message_adapter_impl.email_adapter_impl import CreateMessageEmailAdapterImpl, \
-    DeleteMessageEmailAdapterImpl, UpdateMessageEmailAdapterImpl
+    DeleteMessageEmailAdapterImpl, UpdateMessageEmailAdapterImpl, DeleteSubMessageEmailAdapterImpl, UpdateSubMessageEmailAdapterImpl
 from meeting.infrastructure.adapter.message_adapter_impl.kafka_adapter_impl import CreateMessageKafKaAdapterImpl, \
     DeleteMessageKafKaAdapterImpl, UpdateMessageKafKaAdapterImpl
 from meeting.infrastructure.dao import meeting_dao, meeting_participants_dao
@@ -47,7 +47,9 @@ class MeetingApp:
     meeting_adapter_impl = MeetingAdapterImpl()
     create_message_adapter_impl = [CreateMessageEmailAdapterImpl, CreateMessageKafKaAdapterImpl]
     update_message_adapter_impl = [UpdateMessageEmailAdapterImpl, UpdateMessageKafKaAdapterImpl]
+    update_sub_message_adapter_impl = [UpdateSubMessageEmailAdapterImpl, UpdateMessageKafKaAdapterImpl]
     delete_message_adapter_impl = [DeleteMessageEmailAdapterImpl, DeleteMessageKafKaAdapterImpl]
+    delete_sub_message_adapter_impl = [DeleteSubMessageEmailAdapterImpl, DeleteMessageKafKaAdapterImpl]
 
     def _get_and_check_conflict_meetings_by_date(self, meeting, meeting_id=None, check_single_meeting=False):
         """check the conflict the meeting, if not conflict and return meeting"""
@@ -209,9 +211,10 @@ class MeetingApp:
                     self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
                     meeting["bili_records"] = None
             if meeting["is_cycle"]:
-                meeting_obj = self.meeting_dao.get_by_mid(meeting["mid"])
                 cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
                 self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
+
+                meeting_obj = self.meeting_dao.get_by_mid(meeting["mid"])
                 for sub_meeting in meeting.get("sub_info"):
                     self.meeting_cycle_sub_dao.create(
                         mid=meeting["mid"],
@@ -246,9 +249,19 @@ class MeetingApp:
                                                  date=meeting["date"],
                                                  start=meeting["start"],
                                                  end=meeting["end"],
+                                                 sequence=meeting["sequence"],
                                                  obs_records=meeting["obs_records"],
                                                  bili_records=meeting["bili_records"],
                                                  )
+
+    def _delete_dao(self, meeting_id, meeting):
+        cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
+        with transaction.atomic():
+            self.meeting_dao.delete_by_id(meeting_id, meeting["sequence"])
+            self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
+            self.meeting_obs_records_dao.delete_by_mid(meeting["mid"])
+            self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
+        return meeting_id
 
     def _update_sub_dao(self, meeting):
         with transaction.atomic():
@@ -257,20 +270,14 @@ class MeetingApp:
                                                                 date=meeting["date"],
                                                                 start=meeting["start"],
                                                                 end=meeting["end"])
-            result = self.meeting_dao.update_by_id(meeting["id"], is_record=meeting["is_record"])
+            result = self.meeting_dao.update_by_id(meeting["id"], sequence=meeting["sequence"])
             return result
 
-    def _delete_dao(self, meeting_id, meeting):
-        cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
+    def _delete_sub_dao(self, mid, sub_id, meeting):
         with transaction.atomic():
-            self.meeting_dao.delete_by_id(meeting_id)
-            self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
-            self.meeting_obs_records_dao.delete_by_mid(meeting["mid"])
-            self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
-        return meeting_id
-
-    def _delete_sub_dao(self, mid, sub_id):
-        return self.meeting_cycle_sub_dao.delete_by_mid_and_sub_id(mid, sub_id)
+            self.meeting_cycle_sub_dao.delete_by_mid_and_sub_id(mid, sub_id)
+            result = self.meeting_dao.update_by_id(meeting["id"], sequence=meeting["sequence"])
+            return result
 
     def create(self, meeting):
         """create meeting"""
@@ -349,7 +356,7 @@ class MeetingApp:
         result = self._update_sub_dao(meeting)
         # send message
         meeting["action"] = "update_sub_meeting"
-        start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
+        start_thread(self._send_message, (meeting, self.update_sub_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
         return result
@@ -399,10 +406,10 @@ class MeetingApp:
         # delete meeting
         self.meeting_adapter_impl.delete_sub(meeting)
         # update is_delete=1 in database
-        result = self._delete_sub_dao(mid, sub_id)
+        result = self._delete_sub_dao(mid, sub_id, meeting)
         # send message
         meeting["action"] = "delete_sub_meeting"
-        start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
+        start_thread(self._send_message, (meeting, self.delete_sub_message_adapter_impl))
         logger.info('[MeetingApp/delete_sub] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
         return result[0]

@@ -64,7 +64,6 @@ class WkUpdateCycleSubAction(UpdateCycleSubAction):
     date: str
     start: str
     end: str
-    is_record: bool
 
 
 @dataclass

@@ -184,8 +184,12 @@ class WkApi(MeetingAdapter):
         resp_dict['join_url'] = json_data[0]['guestJoinUri']
         resp_dict['sub_info'] = [{"sub_id": sub_config["cycleSubConfID"],
                                   "date": sub_config["startTime"].split(" ")[0],
-                                  "start": sub_config["startTime"].split(" ")[-1],
-                                  "end": sub_config["endTime"].split(" ")[-1],
+                                  "start": (datetime.datetime.strptime(sub_config["startTime"].split(" ")[-1],
+                                                                       "%H:%M") + datetime.timedelta(hours=8)).strftime(
+                                      "%H:%M"),
+                                  "end": (datetime.datetime.strptime(sub_config["endTime"].split(" ")[-1],
+                                                                     "%H:%M") + datetime.timedelta(hours=8)).strftime(
+                                      "%H:%M")
                                   } for sub_config in json_data[0].get("subConfs") or list()]
         return response.status_code, resp_dict
 
@@ -319,10 +323,6 @@ class WkApi(MeetingAdapter):
             'mediaTypes': 'HDVideo',
         }
         params = {'conferenceID': action.mid}
-        if action.is_record:
-            data['isAutoRecord'] = 1
-        else:
-            data['isAutoRecord'] = 0
         response = requests.put(self._get_url(self.update_cycle_sub_path), params=params, headers=headers,
                                 data=json.dumps(data),
                                 timeout=self.time_out)

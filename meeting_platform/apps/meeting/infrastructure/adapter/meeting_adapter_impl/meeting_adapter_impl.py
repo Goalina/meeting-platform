@@ -127,7 +127,6 @@ class MeetingAction:
                 date=meeting["date"],
                 start=meeting["start"],
                 end=meeting["end"],
-                is_record=meeting["is_record"]
             )
         else:
             raise RuntimeError("[MeetingAdapterImpl/get_update_sub_action] invalid platform type")

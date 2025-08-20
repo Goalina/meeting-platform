@@ -32,7 +32,7 @@ logger = logging.getLogger("log")
 
 # noinspection PyMethodMayBeStatic
 class MeetingSerializer(ModelSerializer):
-    """MeetingSerializer for get a meeting and create meeting"""
+    """MeetingSerializer for list a meeting and create meeting"""
     __audit_client = AuditClient()
     __cycle_date = MeetingCycleDao()
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
@@ -104,9 +104,8 @@ class MeetingSerializer(ModelSerializer):
         }
 
     def _check_content_by_audit(self, value):
-        if value:
-            if not self.__audit_client.check_content_ok(value):
-                raise MyValidationError(RetCode.STATUS_INVALID_CONTENT_FAILED)
+        if value and not self.__audit_client.check_content_ok(value):
+            raise MyValidationError(RetCode.STATUS_INVALID_CONTENT_FAILED)
 
     def validate_sponsor(self, value):
         """check length of 64"""
@@ -205,7 +204,7 @@ class MeetingSerializer(ModelSerializer):
     def validate_is_cycle(self, value):
         """check is_cycle"""
         if not isinstance(value, bool):
-            logger.error("invalid is_record:{}".format(value))
+            logger.error("invalid is_recycle:{}".format(value))
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return value
 
@@ -341,7 +340,7 @@ class MeetingSerializer(ModelSerializer):
 
 # noinspection PyMethodMayBeStatic
 class SingleMeetingSerializer(ModelSerializer):
-    """UpdateMeetingSerializer for update meeting"""
+    """UpdateMeetingSerializer for update or delete meeting"""
     __audit_client = AuditClient()
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
     __cycle_date = MeetingCycleDao()
@@ -406,9 +405,8 @@ class SingleMeetingSerializer(ModelSerializer):
         }
 
     def _check_content_by_audit(self, value):
-        if value:
-            if not self.__audit_client.check_content_ok(value):
-                raise MyValidationError(RetCode.STATUS_INVALID_CONTENT_FAILED)
+        if value and not self.__audit_client.check_content_ok(value):
+            raise MyValidationError(RetCode.STATUS_INVALID_CONTENT_FAILED)
 
     def validate_topic(self, value):
         """check length of 128，not include \r\n url xss"""
@@ -459,7 +457,7 @@ class SingleMeetingSerializer(ModelSerializer):
     def validate_is_cycle(self, value):
         """check is_cycle"""
         if not isinstance(value, bool):
-            logger.error("invalid is_record:{}".format(value))
+            logger.error("invalid is_cycle:{}".format(value))
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return value
 
@@ -583,7 +581,8 @@ class SingleMeetingSerializer(ModelSerializer):
 
 
 # noinspection PyMethodMayBeStatic
-class CycleDateSerializer(ModelSerializer):
+class CycleSubMeetingSerializer(ModelSerializer):
+    """UpdateMeetingSerializer for update or delete meeting"""
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
     __meeting_dao = MeetingDao()
 
@@ -596,11 +595,11 @@ class CycleDateSerializer(ModelSerializer):
         fields = ['mid', 'sub_id', 'date', 'start', 'end', "is_record", "cycle_sub", "sponsor"]
         extra_kwargs = {
             'mid': {'required': True},
-            'sub_id': {'read_only': True},
             'date': {'required': True},
             'start': {'required': True},
             'end': {'required': True},
-            'is_record': {'required': True},
+            'sub_id': {'read_only': True},
+            'is_record': {'read_only': True},
             'cycle_sub': {'read_only': True},
             'sponsor': {'read_only': True},
         }

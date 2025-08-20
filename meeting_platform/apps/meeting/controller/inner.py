@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from meeting.application.meeting import MeetingApp
 from meeting.application.obs_records_app import OBSRecordsApp
 from meeting.controller.serializers.meeting_serializers import MeetingSerializer, SingleMeetingSerializer, \
-    TranslateVideoTextSerializer, CycleDateSerializer
+    TranslateVideoTextSerializer, CycleSubMeetingSerializer
 
 from meeting_platform.utils.customized.my_pagination import MyPagination
 from meeting_platform.utils.ret_code import RetCode
@@ -136,9 +136,9 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
 
 
 class SingleSubMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView, RetrieveAPIView, DestroyAPIView):
-    """update or delete a meeting"""
+    """update or delete a cycle sub meeting"""
     lookup_field = "sub_id"
-    serializer_class = CycleDateSerializer
+    serializer_class = CycleSubMeetingSerializer
     queryset = MeetingApp.meeting_cycle_sub_dao.get_all()
     authentication_classes = (BasicAuthentication,)
     permission_classes = (IsAuthenticated,)
