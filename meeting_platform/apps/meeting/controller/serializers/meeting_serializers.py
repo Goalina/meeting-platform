@@ -252,7 +252,7 @@ class MeetingSerializer(ModelSerializer):
                 for value_tmp in value_list:
                     new_values.append(int(value_tmp))
                 return new_values
-            except (ValueError, TypeError) as e:
+            except Exception as e:
                 logger.info("invalid cycle_point:{}, e:{}".format(value, e))
                 raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
@@ -506,7 +506,7 @@ class SingleMeetingSerializer(ModelSerializer):
                 for value_tmp in value_list:
                     new_values.append(int(value_tmp))
                 return new_values
-            except (ValueError, TypeError) as e:
+            except Exception as e:
                 logger.info("invalid cycle_point:{}, e:{}".format(value, e))
                 raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
