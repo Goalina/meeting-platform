@@ -111,7 +111,6 @@ class MeetingSerializer(ModelSerializer):
         """check length of 64"""
         check_field(value, 64)
         check_invalid_content(value)
-        self._check_content_by_audit(value)
         return value
 
     def validate_group_name(self, value):
