@@ -96,6 +96,15 @@ class MeetingApp:
                 raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE)
 
     @staticmethod
+    def _check_cycle_end(meeting):
+        if meeting["is_cycle"]:
+            cur_date = datetime.datetime.now()
+            end_date = datetime.datetime.strptime(meeting["cycle_end_date"], "%Y-%m-%d")
+            if end_date >= cur_date + datetime.timedelta(days=180):
+                logger.error("_check_cycle_end must create the meeting lt 90 days")
+                raise MyValidationError(RetCode.STATUS_MEETING_IN_HALF_YEAR_FAILED)
+
+    @staticmethod
     def _send_message(meeting, message_handler):
         """send the message"""
         for handler in message_handler:
@@ -103,6 +112,12 @@ class MeetingApp:
                 handler().send_message(meeting)
             except Exception as e:
                 logger.error("[MeetingApp/_send_message] err:{}, and traceback:{}".format(e, traceback.format_exc()))
+
+    def __get_meeting_sub_count(self, mid):
+        m_count = self.meeting_cycle_sub_dao.get_counts_by_mid(mid)
+        if m_count <= 1:
+            logger.error("sub meeting count lt 1")
+            raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_DELETE_FAILED)
 
     def _calc_meeting_count(self, meeting):
         """calc the meeting count"""
@@ -256,12 +271,10 @@ class MeetingApp:
                                                  )
 
     def _delete_dao(self, meeting_id, meeting):
-        cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
         with transaction.atomic():
             self.meeting_dao.delete_by_id(meeting_id, meeting["sequence"])
             self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
             self.meeting_obs_records_dao.delete_by_mid(meeting["mid"])
-            self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
         return meeting_id
 
     def _update_sub_dao(self, meeting):
@@ -286,6 +299,8 @@ class MeetingApp:
         self._calc_meeting_count(meeting)
         # check the recurring meetings
         self._check_recurring_meetings(meeting)
+        # check the cycle end
+        self._check_cycle_end(meeting)
         # check meeting-conflict
         available_host_id = self._get_and_check_conflict_meetings_by_date(meeting)
         meeting["host_id"] = secrets.choice(available_host_id)
@@ -315,6 +330,8 @@ class MeetingApp:
         # check modify meeting count
         if meeting["sequence"] > settings.MEETING_MODIFY_COUNT + 1:
             raise MyValidationError(RetCode.STATUS_MEETING_MODIFY_COUNT_LIMIT)
+        # check the cycle end
+        self._check_cycle_end(meeting)
         # check meeting-conflict
         self._get_and_check_conflict_meetings_by_date(meeting, meeting_id)
         # check not update in the before in start date
@@ -402,6 +419,8 @@ class MeetingApp:
         meeting = model_to_dict(meeting)
         meeting.update({"sequence": meeting["sequence"] + 1})
         meeting.update(model_to_dict(sub_info))
+        # check the current sub meeting count lt 1
+        self.__get_meeting_sub_count(meeting["mid"])
         # check not delete in the before in start date
         self._is_in_prepare_meeting_duration_before_meeting(meeting, check_single_meeting=True)
         # delete meeting

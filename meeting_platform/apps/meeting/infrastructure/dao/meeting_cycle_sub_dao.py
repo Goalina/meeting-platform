@@ -25,6 +25,10 @@ class MeetingCycleSubMeetingDao:
         return cls._dao.objects.filter(date__gte=start_date, date__lte=end_date, mid=mid).values_list("date", flat=True)
 
     @classmethod
+    def get_counts_by_mid(cls, mid):
+        return cls._dao.objects.filter(mid=mid).count()
+
+    @classmethod
     def create(cls, **kwargs):
         return cls._dao.objects.create(**kwargs)
 

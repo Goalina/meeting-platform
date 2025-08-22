@@ -69,6 +69,8 @@ class RetCode(RetCodeBase):
     STATUS_MEETING_MODIFY_COUNT_LIMIT = STATUS_FACILITY_MEETING + 15
     STATUS_MEETING_PUT_RUNNING = STATUS_FACILITY_MEETING + 16
     STATUS_MEETING_REPEAT_FAILED = STATUS_FACILITY_MEETING + 17
+    STATUS_MEETING_CANNOT_DELETE_FAILED = STATUS_FACILITY_MEETING + 18
+    STATUS_MEETING_IN_HALF_YEAR_FAILED = STATUS_FACILITY_MEETING + 19
 
     EN_OPERATION = {
         # common
@@ -112,6 +114,10 @@ class RetCode(RetCodeBase):
         STATUS_MEETING_MODIFY_COUNT_LIMIT: "Modifying the meeting has exceeded the limit",
         STATUS_MEETING_PUT_RUNNING: "The meeting is in progress and cannot be operated",
         STATUS_MEETING_REPEAT_FAILED: "The meeting is repeated and the operation failed.",
+        STATUS_MEETING_CANNOT_DELETE_FAILED: "There is only one sub-meeting left in the recurring meeting,"
+                                             "Please delete the entire recurring meeting.",
+        STATUS_MEETING_IN_HALF_YEAR_FAILED: "The end date of a recurring meeting can only be within six months, "
+                                            "The operation failed.",
 
     }
 
@@ -155,5 +161,7 @@ class RetCode(RetCodeBase):
         STATUS_MEETING_MODIFY_COUNT_LIMIT: "修改会议已超限制",
         STATUS_MEETING_PUT_RUNNING: "会议正在进行中，无法操作此会议",
         STATUS_MEETING_REPEAT_FAILED: "你创建的会议已经存在，请勿重复创建，操作失败",
+        STATUS_MEETING_CANNOT_DELETE_FAILED: "周期性会议目前只剩一场子会议，请删除整个周期性会议",
+        STATUS_MEETING_IN_HALF_YEAR_FAILED: "周期性会议结束日期只能为半年内，操作失败",
 
     }
