@@ -311,7 +311,6 @@ class MeetingApp:
         result_id = self._save_dao(meeting)
         meeting["id"] = result_id
         # send message
-        meeting["action"] = "create_meeting"
         start_thread(self._send_message, (meeting, self.create_message_adapter_impl))
         logger.info('[MeetingApp/create] {}/{}: create meeting which mid is {} and id is {}.'.
                     format(meeting["community"], meeting["platform"], meeting["mid"], result_id))
@@ -342,7 +341,6 @@ class MeetingApp:
         # update in database
         result = self._update_dao(meeting_id, meeting)
         # send message
-        meeting["action"] = "update_meeting"
         start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
@@ -373,7 +371,7 @@ class MeetingApp:
         # update in database
         result = self._update_sub_dao(meeting)
         # send message
-        meeting["action"] = "update_meeting"
+        meeting["check_single_meeting"] = True
         start_thread(self._send_message, (meeting, self.update_sub_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
@@ -388,6 +386,18 @@ class MeetingApp:
         meeting = model_to_dict(meeting)
         set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
         meeting.update({"sequence": meeting["sequence"] + 1})
+        if meeting["is_cycle"]:
+            meeting_cycle_obj = self.meeting_cycle_dao.get_by_mid(meeting["mid"])
+            dict_data = {
+                "cycle_start_date": meeting_cycle_obj.start_date,
+                "cycle_end_date": meeting_cycle_obj.end_date,
+                "cycle_start": meeting_cycle_obj.start,
+                "cycle_end": meeting_cycle_obj.end,
+                "cycle_type": meeting_cycle_obj.cycle_type,
+                "cycle_interval": meeting_cycle_obj.interval,
+                "cycle_point": meeting_cycle_obj.point,
+            }
+            meeting.update(dict_data)
         # check not delete in the before in start date
         self._is_in_prepare_meeting_duration_before_meeting(meeting)
         # delete meeting
@@ -395,7 +405,6 @@ class MeetingApp:
         # update is_delete=1 in database
         result = self._delete_dao(meeting_id, meeting)
         # send message
-        meeting["action"] = "delete_meeting"
         start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
         logger.info('[MeetingApp/delete] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting_id))
@@ -428,7 +437,7 @@ class MeetingApp:
         # update is_delete=1 in database
         result = self._delete_sub_dao(mid, sub_id, meeting)
         # send message
-        meeting["action"] = "delete_meeting"
+        meeting["check_single_meeting"] = True
         start_thread(self._send_message, (meeting, self.delete_sub_message_adapter_impl))
         logger.info('[MeetingApp/delete_sub] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))

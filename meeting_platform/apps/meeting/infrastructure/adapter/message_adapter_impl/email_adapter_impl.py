@@ -53,7 +53,6 @@ class EmailTemplate:
 
     def __init__(self, meeting):
         """meeting must be dict"""
-        print(meeting)
         self.email_list = meeting["email_list"]
         if self.email_list:
             toaddrs = self.email_list.replace(' ', '').replace('，', ',').replace(';', ',').replace('；', ',')
@@ -78,18 +77,18 @@ class EmailTemplate:
         self.mid = meeting["mid"]
         self.sequence = meeting.get("sequence") or 0
         self.sub_info = meeting.get("sub_info")
-        self.start_date = meeting.get("start_date")
-        self.end_date = meeting.get("end_date")
+        self.start_date = meeting.get("cycle_start_date")
+        self.end_date = meeting.get("cycle_end_date")
         self.cycle_start = meeting.get("cycle_start")
         self.cycle_end = meeting.get("cycle_end")
         self.cycle_type = meeting.get("cycle_type")
         self.cycle_interval = meeting.get("cycle_interval")
         self.cycle_point = meeting.get("cycle_point")
         self.is_cycle = meeting.get("is_cycle")
-        if not self.is_cycle:
+        if not self.is_cycle or meeting.get("check_single_meeting"):
             self.start_time = ' '.join([self.date, self.start])
         else:
-            self.start_time = '{}-{} {} {}'.format(self.start_date, self.end_date, self.cycle_start, self.cycle_end)
+            self.start_time = '{}~{} {}-{}'.format(self.start_date, self.end_date, self.cycle_start, self.cycle_end)
         self.action = meeting.get("action")
 
     # noinspection DuplicatedCode
@@ -118,6 +117,11 @@ class EmailTemplate:
             replace('{{sig_name}}', self.sig_name)
         return MIMEText(body_of_email, _charset='utf-8')
 
+    @staticmethod
+    def __covert_date(datetime_str):
+        datetime_obj = datetime.datetime.strptime(datetime_str, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
+        return datetime_obj.replace(tzinfo=pytz.utc)
+
     def __get_before_start_and_end(self):
         if not self.is_cycle:
             meeting_date = self.date
@@ -128,12 +132,8 @@ class EmailTemplate:
             meeting_date = sub_info[0]["date"]
             meeting_start = sub_info[0]["start"]
             meeting_end = sub_info[0]["end"]
-        before_start = datetime.datetime.strptime(
-            meeting_date + ' ' + meeting_start, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
-        before_end = datetime.datetime.strptime(
-            meeting_date + ' ' + meeting_end, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
-        dt_start = before_start.replace(tzinfo=pytz.utc)
-        dt_end = before_end.replace(tzinfo=pytz.utc)
+        dt_start = self.__covert_date(meeting_date + ' ' + meeting_start)
+        dt_end = self.__covert_date(meeting_date + ' ' + meeting_end)
         return dt_start, dt_end
 
     def __get_add_icalendar_event(self):
@@ -148,26 +148,17 @@ class EmailTemplate:
         event.add('sequence', self.sequence)
         if self.is_cycle:
             r_date_list = list()
-            if self.action in ["update_sub_meeting", "delete_sub_meeting"]:
-                event.add('recurrence-id', dt_start)
-            else:
-                for meeting in self.sub_info:
-                    if meeting["date"] != dt_start:
-                        r_date_list.append(
-                            datetime.datetime.strptime(meeting['date'] + ' ' + meeting['start'], '%Y-%m-%d %H:%M')
-                            - datetime.timedelta(hours=8)
-                        )
-                if r_date_list:
-                    event.add("rdate", r_date_list)
+            for meeting in self.sub_info:
+                datetime_obj = self.__covert_date(meeting["date"] + ' ' + meeting["start"])
+                if datetime_obj != dt_start:
+                    r_date_list.append(datetime_obj)
+            if r_date_list:
+                event.add("rdate", r_date_list)
         return event
 
     def __get_update_sub_icalendar_event(self):
-        before_start = datetime.datetime.strptime(
-            self.date + ' ' + self.start, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
-        before_end = datetime.datetime.strptime(
-            self.date + ' ' + self.end, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
-        dt_start = before_start.replace(tzinfo=pytz.utc)
-        dt_end = before_end.replace(tzinfo=pytz.utc)
+        dt_start = self.__covert_date(self.date + ' ' + self.start)
+        dt_end = self.__covert_date(self.date + ' ' + self.end)
         event = icalendar.Event()
         event.add('attendee', ','.join(self.toaddrs_list))
         event.add('summary', self.topic)
@@ -188,12 +179,8 @@ class EmailTemplate:
         return event
 
     def __get_sub_delete_icalendar_event(self):
-        before_start = datetime.datetime.strptime(
-            self.date + ' ' + self.start, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
-        before_end = datetime.datetime.strptime(
-            self.date + ' ' + self.end, '%Y-%m-%d %H:%M') - datetime.timedelta(hours=8)
-        dt_start = before_start.replace(tzinfo=pytz.utc)
-        dt_end = before_end.replace(tzinfo=pytz.utc)
+        dt_start = self.__covert_date(self.date + ' ' + self.start)
+        dt_end = self.__covert_date(self.date + ' ' + self.end)
         event = icalendar.Event()
         event.add('attendee', ','.join(self.toaddrs_list))
         event.add('summary', self.topic)

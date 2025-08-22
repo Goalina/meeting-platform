@@ -41,7 +41,7 @@ class CreateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
             return
         with KafKaClient(kafka_info) as client:
             data = {
-                "action": meeting["action"],
+                "action": "create_meeting",
                 "msg": meeting
             }
             client.send_msg(kafka_info["KAFKA_TOPIC"], data)
@@ -66,7 +66,7 @@ class UpdateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
             meeting["update_time"] = meeting["update_time"].strftime("%Y-%m-%d %H:%M")
         with KafKaClient(kafka_info) as client:
             data = {
-                "action": meeting["action"],
+                "action": "update_meeting",
                 "msg": meeting
             }
             client.send_msg(kafka_info["KAFKA_TOPIC"], data)
@@ -93,7 +93,7 @@ class DeleteMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
             meeting["update_time"] = meeting["update_time"].strftime("%Y-%m-%d %H:%M")
         with KafKaClient(kafka_info) as client:
             data = {
-                "action": meeting["action"],
+                "action": "delete_meeting",
                 "msg": meeting
             }
             client.send_msg(kafka_info["KAFKA_TOPIC"], data)
