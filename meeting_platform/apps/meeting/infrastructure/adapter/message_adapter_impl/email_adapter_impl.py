@@ -167,11 +167,12 @@ class EmailTemplate:
                 }
                 rrule = vRecur(rrule_data)
             elif self.cycle_type == CycleType.Month:
+                month_dt_end = self.__covert_date(self.end_date + ' ' + self.cycle_end)
                 rrule_data = {
                     'FREQ': ['MONTHLY'],
                     'INTERVAL': self.cycle_interval,
                     'BYMONTHDAY': self.cycle_point,
-                    'UNTIL': dt_end
+                    'UNTIL': month_dt_end
                 }
                 rrule = vRecur(rrule_data)
             else:
@@ -199,6 +200,9 @@ class EmailTemplate:
         event.add('summary', self.topic)
         event.add('uid', self.platform + str(self.mid))
         event.add('sequence', self.sequence)
+        if self.is_cycle:
+            dt_start = self.__covert_date(self.start_date + ' ' + self.cycle_start)
+            event.add('dtstamp', dt_start)
         return event
 
     def __get_sub_delete_icalendar_event(self):
