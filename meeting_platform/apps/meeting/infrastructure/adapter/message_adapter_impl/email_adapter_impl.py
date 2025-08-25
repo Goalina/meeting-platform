@@ -201,7 +201,8 @@ class EmailTemplate:
         event.add('uid', self.platform + str(self.mid))
         event.add('sequence', self.sequence)
         if self.is_cycle:
-            dt_start = self.__covert_date(self.start_date + ' ' + self.cycle_start)
+            cur_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            dt_start = self.__covert_date(cur_date)
             event.add('dtstamp', dt_start)
         return event
 
