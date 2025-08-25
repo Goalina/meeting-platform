@@ -171,7 +171,7 @@ class EmailTemplate:
                     'FREQ': ['MONTHLY'],
                     'INTERVAL': self.cycle_interval,
                     'BYMONTHDAY': self.cycle_point,
-                    'COUNT': len(self.sub_info)
+                    'UNTIL': dt_end
                 }
                 rrule = vRecur(rrule_data)
             else:
@@ -266,7 +266,6 @@ class EmailTemplate:
         cal.add('version', '2.0')
         cal.add('method', 'CANCEL')
         event = self.__get_delete_icalendar_event()
-        event.add('sequence', self.sequence)
         cal.add_component(event)
         part = MIMEBase('text', 'calendar', method='CANCEL')
         part.set_payload(cal.to_ical())
