@@ -13,8 +13,10 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from icalendar import vRecur
 from django.conf import settings
 
+from meeting.domain.primitive.cycle_type import CycleType
 from meeting.domain.repository.message_adapter import MessageAdapter
 from meeting_platform.utils.client.email_client import EmailClient
 from meeting_platform.utils.common import func_retry
@@ -147,13 +149,34 @@ class EmailTemplate:
         event.add('uid', self.platform + str(self.mid))
         event.add('sequence', self.sequence)
         if self.is_cycle:
-            r_date_list = list()
-            for meeting in self.sub_info:
-                datetime_obj = self.__covert_date(meeting["date"] + ' ' + meeting["start"])
-                if datetime_obj != dt_start:
-                    r_date_list.append(datetime_obj)
-            if r_date_list:
-                event.add("rdate", r_date_list)
+            if self.cycle_type == CycleType.DAY:
+                rrule_data = {
+                    'FREQ': ['DAILY'],
+                    'INTERVAL': self.cycle_interval,
+                    'COUNT': len(self.sub_info)
+                }
+                rrule = vRecur(rrule_data)
+            elif self.cycle_type == CycleType.Week:
+                day_map = {0: 'SU', 1: 'MO', 2: 'TU', 3: 'WE', 4: 'TH', 5: 'FR', 6: 'SA'}
+                by_day_list = [day_map[p] for p in self.cycle_point]
+                rrule_data = {
+                    'FREQ': ['WEEKLY'],
+                    'INTERVAL': self.cycle_interval,
+                    'BYDAY': by_day_list,
+                    'COUNT': len(self.sub_info)
+                }
+                rrule = vRecur(rrule_data)
+            elif self.cycle_type == CycleType.Month:
+                rrule_data = {
+                    'FREQ': ['MONTHLY'],
+                    'INTERVAL': self.cycle_interval,
+                    'BYMONTHDAY': self.cycle_point,
+                    'COUNT': len(self.sub_info)
+                }
+                rrule = vRecur(rrule_data)
+            else:
+                raise ValueError("invalid cycle type")
+            event.add("rrule", rrule)
         return event
 
     def __get_update_sub_icalendar_event(self):
@@ -257,7 +280,6 @@ class EmailTemplate:
         cal.add('version', '2.0')
         cal.add('method', 'CANCEL')
         event = self.__get_sub_delete_icalendar_event()
-        event.add('sequence', self.sequence)
         cal.add_component(event)
         part = MIMEBase('text', 'calendar', method='CANCEL')
         part.set_payload(cal.to_ical())
