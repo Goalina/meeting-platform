@@ -39,6 +39,8 @@ class CreateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
             logger.info("[CreateMessageAdapterImpl] {} kafka config is empty, Please ignore."
                         .format(meeting["community"]))
             return
+        if "cycle_type" in meeting.keys():
+            meeting["cycle_type"] = meeting["cycle_type"].des
         with KafKaClient(kafka_info) as client:
             data = {
                 "action": "create_meeting",
@@ -64,6 +66,8 @@ class UpdateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
             return
         if isinstance(meeting.get("update_time"), datetime.datetime):
             meeting["update_time"] = meeting["update_time"].strftime("%Y-%m-%d %H:%M")
+        if "cycle_type" in meeting.keys():
+            meeting["cycle_type"] = meeting["cycle_type"].des
         with KafKaClient(kafka_info) as client:
             data = {
                 "action": "update_meeting",
@@ -91,6 +95,8 @@ class DeleteMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
             meeting["create_time"] = meeting["create_time"].strftime("%Y-%m-%d %H:%M")
         if isinstance(meeting.get("update_time"), datetime.datetime):
             meeting["update_time"] = meeting["update_time"].strftime("%Y-%m-%d %H:%M")
+        if "cycle_type" in meeting.keys():
+            meeting["cycle_type"] = meeting["cycle_type"].des
         with KafKaClient(kafka_info) as client:
             data = {
                 "action": "delete_meeting",
