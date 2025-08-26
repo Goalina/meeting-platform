@@ -26,6 +26,7 @@ from meeting.infrastructure.adapter.upload_adapter_impl.bili_upload_adapter_impl
 from meeting.infrastructure.adapter.upload_adapter_impl.obs_upload_adapter_impl import ObsUploadAdapterImpl
 from meeting.infrastructure.adapter.translate_adapter_impl import TranslateAdapterImpl
 from meeting.infrastructure.dao.meeting_dao import MeetingDao
+from meeting.infrastructure.dao.meeting_cycle_sub_dao import MeetingCycleSubMeetingDao
 from meeting.infrastructure.dao.meeting_records_obs_dao import MeetingRecordsObsDao
 from meeting.infrastructure.dao.meeting_records_bili_dao import MeetingRecordsBiliDao
 
@@ -34,6 +35,7 @@ logger = logging.getLogger("log")
 
 class HandleRecording:
     meeting_dao = MeetingDao
+    meeting_cycle_sub_dao = MeetingCycleSubMeetingDao
     meeting_obs_records_dao = MeetingRecordsObsDao
     meeting_bili_records_dao = MeetingRecordsBiliDao
 
@@ -128,6 +130,13 @@ class HandleRecording:
         for meeting_obj in meeting_infos:
             try:
                 meeting = model_to_dict(meeting_obj)
+                # todo 这里需要处理
+                if meeting["is_cycle"]:
+                    meeting_sub_info = self.meeting_cycle_sub_dao.get_first_by_date_range(
+                        start_date, end_date, meeting["mid"])
+                    meeting["date"] = meeting_sub_info["date"]
+                    meeting["start"] = meeting_sub_info["start"]
+                    meeting["end"] = meeting_sub_info["end"]
                 video_path = self._get_video_path(meeting)
                 if not video_path:
                     logger.info("[HandleRecording/upload_all]: Find empty video_path({})".format(meeting["mid"]))

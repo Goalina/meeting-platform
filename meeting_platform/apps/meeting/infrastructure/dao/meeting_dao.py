@@ -88,7 +88,8 @@ class MeetingDao:
     def get_meeting_by_obs_records(cls, community, obs_records, start_date, end_date):
         return cls.dao.objects.filter(is_delete=0, community=community,
                                       is_record=True, obs_records_id__in=obs_records). \
-            filter(Q(date__gt=start_date) & Q(date__lte=end_date)).all()
+            filter(Q(date__gt=start_date, date__lte=end_date) |
+                   Q(cycle_date__start__gt=start_date, cycle_date__end__glt=end_date)).all()
 
     @classmethod
     def get_meeting_by_bili_records(cls, community, bili_records, start_date, end_date):
