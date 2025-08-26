@@ -114,8 +114,8 @@ class HandleRecording:
     @staticmethod
     def _get_valid_query_range():
         cur_date = datetime.datetime.now()
-        start_date = str(cur_date - datetime.timedelta(days=settings.BILI_UPLOAD_DATE))
-        end_date = cur_date.strftime('%Y-%m-%d')
+        start_date = (cur_date - datetime.timedelta(days=settings.BILI_UPLOAD_DATE)).strftime('%Y-%m-%d %H:%M')
+        end_date = cur_date.strftime('%Y-%m-%d %H:%M')
         return start_date, end_date
 
     def upload_obs(self):
@@ -123,8 +123,8 @@ class HandleRecording:
         cache_path = defaultdict(dict)
         meeting_obs_records = self.meeting_obs_records_dao.get_records_by_status(UploadStatus.INIT.value)
         start_date, end_date = self._get_valid_query_range()
-        meeting_infos = self.meeting_dao.get_meeting_by_obs_records(self.community, meeting_obs_records, start_date,
-                                                                    end_date)
+        meeting_infos = self.meeting_dao.get_meeting_by_obs_records(self.community, list(meeting_obs_records),
+                                                                    start_date, end_date)
         upload_mid = ",".join([str(i.mid) for i in meeting_infos])
         logger.info("[HandleRecording/upload_obs]: Find need to upload mid({}/{})".format(upload_mid, self.community))
         for meeting_obj in meeting_infos:
@@ -135,10 +135,10 @@ class HandleRecording:
                                                                                          UploadStatus.INIT.value)
                     meeting_sub_info = self.meeting_cycle_sub_dao.get_first_by_date_range(
                         start_date, end_date, meeting["mid"], sub_ids)
-                    meeting["date"] = meeting_sub_info["date"]
-                    meeting["start"] = meeting_sub_info["start"]
-                    meeting["end"] = meeting_sub_info["end"]
-                    meeting["sub_id"] = meeting_sub_info["sub_id"]
+                    meeting["date"] = meeting_sub_info.date
+                    meeting["start"] = meeting_sub_info.start
+                    meeting["end"] = meeting_sub_info.end
+                    meeting["sub_id"] = meeting_sub_info.sub_id
                 video_path = self._get_video_path(meeting)
                 if not video_path:
                     logger.info("[HandleRecording/upload_all]: Find empty video_path({})".format(meeting["mid"]))
