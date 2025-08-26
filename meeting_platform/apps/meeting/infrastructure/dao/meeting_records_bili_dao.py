@@ -17,7 +17,7 @@ class MeetingRecordsBiliDao:
 
     @classmethod
     def get_by_mid(cls, mid):
-        return cls._dao.objects.filter(mid=mid).first()
+        return cls._dao.objects.filter(mid=mid).values()
 
     @classmethod
     def get_by_id(cls, cur_id):
@@ -28,13 +28,13 @@ class MeetingRecordsBiliDao:
         return cls._dao.objects.filter(id=record_id).update(**kwargs)
 
     @classmethod
-    def create(cls, status, mid):
-        return cls._dao.objects.create(status=status, mid=mid)
+    def create(cls, status, mid, sub_id, meeting_id):
+        return cls._dao.objects.create(status=status, mid=mid, sub_id=sub_id, meeting_id=meeting_id)
+
+    @classmethod
+    def delete_by_mid_and_sub_id(cls, mid, sub_id):
+        return cls._dao.objects.filter(mid=mid, sub_id=sub_id).all().delete()
 
     @classmethod
     def delete_by_mid(cls, mid):
         return cls._dao.objects.filter(mid=mid).all().delete()
-
-    @classmethod
-    def delete_by_id(cls, cur_id):
-        return cls._dao.objects.filter(id=cur_id).all().delete()

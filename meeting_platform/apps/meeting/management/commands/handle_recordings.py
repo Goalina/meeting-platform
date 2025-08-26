@@ -130,13 +130,15 @@ class HandleRecording:
         for meeting_obj in meeting_infos:
             try:
                 meeting = model_to_dict(meeting_obj)
-                # todo 这里需要处理
                 if meeting["is_cycle"]:
+                    sub_ids = self.meeting_obs_records_dao.get_records_by_status_and_mid(meeting["mid"],
+                                                                                         UploadStatus.INIT.value)
                     meeting_sub_info = self.meeting_cycle_sub_dao.get_first_by_date_range(
-                        start_date, end_date, meeting["mid"])
+                        start_date, end_date, meeting["mid"], sub_ids)
                     meeting["date"] = meeting_sub_info["date"]
                     meeting["start"] = meeting_sub_info["start"]
                     meeting["end"] = meeting_sub_info["end"]
+                    meeting["sub_id"] = meeting_sub_info["sub_id"]
                 video_path = self._get_video_path(meeting)
                 if not video_path:
                     logger.info("[HandleRecording/upload_all]: Find empty video_path({})".format(meeting["mid"]))
@@ -149,8 +151,8 @@ class HandleRecording:
                 video_object = self.upload_obs_adapter_impl(meeting).upload(video_path, cover_path)
                 if not video_object:
                     raise Exception("upload obs failed")
-                self.translate_adapter_impl.translate(meeting["mid"], video_object)
-                self.meeting_obs_records_dao.update_by_mid(meeting_obj.bili_records.id,
+                self.translate_adapter_impl.translate(meeting["mid"], meeting.get("sub_id"), video_object)
+                self.meeting_obs_records_dao.update_by_mid(meeting["mid"], meeting.get("sub_id"),
                                                            status=UploadStatus.TRANSLATE.value)
                 cache_path[meeting_obj.id] = {
                     "video_path": video_path,
@@ -211,8 +213,11 @@ def work_flow(handle_recording: HandleRecording):
     :return:
     """
     try:
-        cache_path = handle_recording.upload_obs()
-        handle_recording.upload_bili(cache_path)
+        cache_path = dict()
+        if settings.IS_UPLOAD_OBS:
+            cache_path = handle_recording.upload_obs()
+        if settings.IS_UPLOAD_BILI:
+            handle_recording.upload_bili(cache_path)
     except Exception as e:
         logger.error("[work_flow] e:{}, traceback:{}".format(e, traceback.format_exc()))
 

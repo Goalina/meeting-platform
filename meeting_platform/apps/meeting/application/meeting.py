@@ -150,14 +150,6 @@ class MeetingApp:
 
     def _save_dao(self, meeting):
         with transaction.atomic():
-            if meeting["is_record"]:
-                obs_record_obj = self.meeting_obs_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
-                meeting["obs_records"] = obs_record_obj
-                bili_record_obj = self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
-                meeting["bili_records"] = bili_record_obj
-            else:
-                meeting["obs_records"] = None
-                meeting["bili_records"] = None
             meeting_data = {
                 "sponsor": meeting.get("sponsor"),
                 "group_name": meeting.get("group_name"),
@@ -176,8 +168,6 @@ class MeetingApp:
                 "m_mid": meeting.get("m_mid"),
                 "join_url": meeting.get("join_url"),
                 "is_record": meeting.get("is_record"),
-                "obs_records": meeting.get("obs_records"),
-                "bili_records": meeting.get("bili_records"),
             }
             meeting_obj = self.meeting_dao.create(**meeting_data)
             if meeting["is_cycle"]:
@@ -191,6 +181,13 @@ class MeetingApp:
                         "meeting": meeting_obj,
                     }
                     self.meeting_cycle_sub_dao.create(**cycle_sub_meeting)
+                    self.meeting_obs_records_dao.create(UploadStatus.INIT.value,
+                                                        meeting["mid"],
+                                                        sub_meeting["sub_id"],
+                                                        meeting_obj.id)
+                    self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"],
+                                                         sub_meeting["sub_id"],
+                                                         meeting_obj.id)
                 cycle_date = {
                     "mid": meeting["mid"],
                     "start_date": meeting.get("cycle_start_date"),
@@ -204,32 +201,28 @@ class MeetingApp:
                     if meeting.get("cycle_point") is not None else None,
                 }
                 self.meeting_cycle_dao.create(**cycle_date)
+            else:
+                self.meeting_obs_records_dao.create(UploadStatus.INIT.value,
+                                                    meeting["mid"],
+                                                    None,
+                                                    meeting_obj.id)
+                self.meeting_bili_records_dao.create(UploadStatus.INIT.value,
+                                                     meeting["mid"],
+                                                     None,
+                                                     meeting_obj.id)
             return meeting_obj.id
 
     def _update_dao(self, meeting_id, meeting):
         with transaction.atomic():
-            obs_record_obj = self.meeting_obs_records_dao.get_by_mid(meeting["mid"])
-            bili_record_obj = self.meeting_bili_records_dao.get_by_mid(meeting["mid"])
-            if meeting["is_record"]:
-                if not obs_record_obj:
-                    obs_record_obj = self.meeting_obs_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
-                meeting["obs_records"] = obs_record_obj
-                if not bili_record_obj:
-                    bili_record_obj = self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"])
-                meeting["bili_records"] = bili_record_obj
-            else:
-                if obs_record_obj:
-                    self.meeting_dao.update_obs_records_by_mid(meeting["mid"])
-                    self.meeting_obs_records_dao.delete_by_mid(meeting["mid"])
-                    meeting["obs_records"] = None
-                if bili_record_obj:
-                    self.meeting_dao.update_bili_records_by_mid(meeting["mid"])
-                    self.meeting_bili_records_dao.delete_by_mid(meeting["mid"])
-                    meeting["bili_records"] = None
             if meeting["is_cycle"]:
                 cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
+                cycle_sub_info = self.meeting_cycle_sub_dao.get_by_mid_and_date(meeting["mid"], cur_date_str)
+                for cycle_sub_temp in cycle_sub_info:
+                    self.meeting_obs_records_dao.delete_by_mid_and_sub_id(cycle_sub_temp.mid,
+                                                                          cycle_sub_temp.sub_id)
+                    self.meeting_bili_records_dao.delete_by_mid_and_sub_id(cycle_sub_temp.mid,
+                                                                           cycle_sub_temp.sub_id)
                 self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
-
                 meeting_obj = self.meeting_dao.get_by_mid(meeting["mid"])
                 for sub_meeting in meeting.get("sub_info"):
                     self.meeting_cycle_sub_dao.create(
@@ -240,6 +233,13 @@ class MeetingApp:
                         end=sub_meeting["end"],
                         meeting=meeting_obj,
                     )
+                    self.meeting_obs_records_dao.create(UploadStatus.INIT.value,
+                                                        meeting["mid"],
+                                                        sub_meeting["sub_id"],
+                                                        meeting_obj.id)
+                    self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"],
+                                                         sub_meeting["sub_id"],
+                                                         meeting_obj.id)
                 cycle_date = {
                     "mid": meeting["mid"],
                     "start_date": meeting.get("cycle_start_date"),
@@ -266,8 +266,6 @@ class MeetingApp:
                                                  start=meeting["start"],
                                                  end=meeting["end"],
                                                  sequence=meeting["sequence"],
-                                                 obs_records=meeting["obs_records"],
-                                                 bili_records=meeting["bili_records"],
                                                  )
 
     def _delete_dao(self, meeting_id, meeting):

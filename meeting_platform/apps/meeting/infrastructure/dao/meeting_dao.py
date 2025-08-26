@@ -63,19 +63,9 @@ class MeetingDao:
         return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(**kwargs)
 
     @classmethod
-    def update_bili_records_by_mid(cls, mid):
-        return cls.dao.objects.filter(mid=mid, is_delete=0).update(bili_records=None)
-
-    @classmethod
-    def update_obs_records_by_mid(cls, mid):
-        return cls.dao.objects.filter(mid=mid, is_delete=0).update(obs_records=None)
-
-    @classmethod
     def delete_by_id(cls, meeting_id, sequence):
         return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1,
-                                                                         sequence=sequence,
-                                                                         bili_records=None,
-                                                                         obs_records=None)
+                                                                         sequence=sequence)
 
     @classmethod
     def get_meeting_by_date(cls, community, start_date, end_date, end_time):
@@ -87,12 +77,12 @@ class MeetingDao:
     @classmethod
     def get_meeting_by_obs_records(cls, community, obs_records, start_date, end_date):
         return cls.dao.objects.filter(is_delete=0, community=community,
-                                      is_record=True, obs_records_id__in=obs_records). \
+                                      is_record=True, id__in=obs_records). \
             filter(Q(date__gt=start_date, date__lte=end_date) |
-                   Q(cycle_date__start__gt=start_date, cycle_date__end__glt=end_date)).all()
+                   Q(cycle_date__start__gt=start_date, cycle_date__end__lte=end_date)).all()
 
     @classmethod
     def get_meeting_by_bili_records(cls, community, bili_records, start_date, end_date):
         return cls.dao.objects.filter(is_delete=0, community=community,
-                                      is_record=True, bili_records_id__in=bili_records). \
+                                      is_record=True, id__in=bili_records). \
             filter(Q(date__gt=start_date) & Q(date__lte=end_date)).all()

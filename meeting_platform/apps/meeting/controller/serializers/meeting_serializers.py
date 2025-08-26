@@ -17,6 +17,9 @@ from rest_framework.serializers import ModelSerializer
 from meeting.domain.primitive.cycle_type import CycleType
 from meeting.models import Meeting, MeetingObsRecords, MeetingCycleSubMeeting
 from meeting.infrastructure.dao.meeting_cycle_sub_dao import MeetingCycleSubMeetingDao
+from meeting.infrastructure.dao.meeting_records_bili_dao import MeetingRecordsBiliDao
+from meeting.infrastructure.dao.meeting_records_obs_dao import MeetingRecordsObsDao
+
 from meeting.infrastructure.dao.meeting_cycle_dao import MeetingCycleDao
 from meeting.infrastructure.dao.meeting_dao import MeetingDao
 
@@ -36,15 +39,11 @@ class MeetingSerializer(ModelSerializer):
     __audit_client = AuditClient()
     __cycle_date = MeetingCycleDao()
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
+    __obs_dao = MeetingRecordsObsDao()
+    __bili_dao = MeetingRecordsBiliDao()
 
     duration = serializers.SerializerMethodField()
     duration_time = serializers.SerializerMethodField()
-    bili_status = serializers.SerializerMethodField()
-    bili_replay_url = serializers.SerializerMethodField()
-    translate_status = serializers.SerializerMethodField()
-    text_vtt_url = serializers.SerializerMethodField()
-    text_json_url = serializers.SerializerMethodField()
-    text_video_url = serializers.SerializerMethodField()
 
     cycle_start_date = serializers.CharField(required=False)
     cycle_end_date = serializers.CharField(required=False)
@@ -60,9 +59,7 @@ class MeetingSerializer(ModelSerializer):
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'join_url', 'create_time', 'update_time',
                   'is_delete', 'is_record', 'duration', 'duration_time', 'is_cycle', 'cycle_start_date',
-                  'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point',
-                  'obs_records', 'bili_records', 'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url',
-                  'text_json_url', 'text_video_url', ]
+                  'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'required': True},
@@ -80,19 +77,11 @@ class MeetingSerializer(ModelSerializer):
             'mid': {'read_only': True},
             'm_mid': {'read_only': True},
             'join_url': {'read_only': True},
-            'bili_status': {'read_only': True},
-            'bili_replay_url': {'read_only': True},
-            'translate_status': {'read_only': True},
-            'text_vtt_url': {'read_only': True},
-            'text_json_url': {'read_only': True},
-            'text_video_url': {'read_only': True},
             'create_time': {'read_only': True},
             'update_time': {'read_only': True},
             'is_delete': {'read_only': True},
             'duration': {'read_only': True},
             'duration_time': {'read_only': True},
-            'obs_records': {'read_only': True},
-            'bili_records': {'read_only': True},
             'is_cycle': {'required': True},
             'cycle_start_date': {'required': False},
             'cycle_end_date': {'required': False},
@@ -272,36 +261,6 @@ class MeetingSerializer(ModelSerializer):
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return attrs
 
-    def get_bili_status(self, obj):
-        """get bili status"""
-        if obj.bili_records:
-            return obj.bili_records.status
-
-    def get_bili_replay_url(self, obj):
-        """get bili replay url"""
-        if obj.bili_records:
-            return obj.bili_records.replay_url
-
-    def get_translate_status(self, obj):
-        """get translate status"""
-        if obj.obs_records:
-            return obj.obs_records.status
-
-    def get_text_vtt_url(self, obj):
-        """get translate vtt url"""
-        if obj.obs_records:
-            return obj.obs_records.text_vtt_url
-
-    def get_text_json_url(self, obj):
-        """get translate json url"""
-        if obj.obs_records:
-            return obj.obs_records.text_json_url
-
-    def get_text_video_url(self, obj):
-        """get translate video url"""
-        if obj.obs_records:
-            return obj.obs_records.text_video_url
-
     def get_duration(self, obj):
         """get duration"""
         if obj.start and obj.end:
@@ -334,6 +293,8 @@ class MeetingSerializer(ModelSerializer):
             data["cycle_interval"] = None
             data["cycle_point"] = None
             data["cycle_sub"] = list()
+        data["obs_data"] = list(self.__obs_dao.get_by_mid(instance.mid))
+        data["bili_data"] = list(self.__bili_dao.get_by_mid(instance.mid))
         return data
 
 
@@ -343,15 +304,11 @@ class SingleMeetingSerializer(ModelSerializer):
     __audit_client = AuditClient()
     __cycle_sub_dao = MeetingCycleSubMeetingDao()
     __cycle_date = MeetingCycleDao()
+    __obs_dao = MeetingRecordsObsDao()
+    __bili_dao = MeetingRecordsBiliDao()
 
     duration = serializers.SerializerMethodField()
     duration_time = serializers.SerializerMethodField()
-    bili_status = serializers.SerializerMethodField()
-    bili_replay_url = serializers.SerializerMethodField()
-    translate_status = serializers.SerializerMethodField()
-    text_vtt_url = serializers.SerializerMethodField()
-    text_json_url = serializers.SerializerMethodField()
-    text_video_url = serializers.SerializerMethodField()
 
     cycle_start_date = serializers.CharField(required=False)
     cycle_end_date = serializers.CharField(required=False)
@@ -366,10 +323,8 @@ class SingleMeetingSerializer(ModelSerializer):
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'duration', 'duration_time',
-                  'bili_status', 'bili_replay_url', 'translate_status', 'text_vtt_url', 'text_json_url',
-                  'text_video_url', 'join_url', 'create_time', 'update_time', 'is_delete', 'is_cycle',
-                  'cycle_start_date', 'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval',
-                  'cycle_point', 'obs_records', 'bili_records']
+                  'join_url', 'create_time', 'update_time', 'is_delete', 'is_cycle', 'cycle_start_date',
+                  'cycle_end_date',  'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'read_only': True},
@@ -387,17 +342,9 @@ class SingleMeetingSerializer(ModelSerializer):
             'mid': {'read_only': True},
             'm_mid': {'read_only': True},
             'join_url': {'read_only': True},
-            'bili_status': {'read_only': True},
-            'bili_replay_url': {'read_only': True},
-            'translate_status': {'read_only': True},
-            'text_vtt_url': {'read_only': True},
-            'text_json_url': {'read_only': True},
-            'text_video_url': {'read_only': True},
             'create_time': {'read_only': True},
             'update_time': {'read_only': True},
             'is_delete': {'read_only': True},
-            'obs_records': {'read_only': True},
-            'bili_records': {'read_only': True},
             'duration': {'read_only': True},
             'duration_time': {'read_only': True},
             'is_cycle': {'required': True}
@@ -514,36 +461,6 @@ class SingleMeetingSerializer(ModelSerializer):
         attrs["update_time"] = datetime.now()
         return attrs
 
-    def get_bili_status(self, obj):
-        """get bili status"""
-        if obj.bili_records:
-            return obj.bili_records.status
-
-    def get_bili_replay_url(self, obj):
-        """get bili replay url"""
-        if obj.bili_records:
-            return obj.bili_records.replay_url
-
-    def get_translate_status(self, obj):
-        """get translate status"""
-        if obj.obs_records:
-            return obj.obs_records.status
-
-    def get_text_vtt_url(self, obj):
-        """get translate vtt url"""
-        if obj.obs_records:
-            return obj.obs_records.text_vtt_url
-
-    def get_text_json_url(self, obj):
-        """get translate json url"""
-        if obj.obs_records:
-            return obj.obs_records.text_json_url
-
-    def get_text_video_url(self, obj):
-        """get translate video url"""
-        if obj.obs_records:
-            return obj.obs_records.text_video_url
-
     def get_duration(self, obj):
         """get duration"""
         if obj.start and obj.end:
@@ -576,6 +493,8 @@ class SingleMeetingSerializer(ModelSerializer):
             data["cycle_interval"] = None
             data["cycle_point"] = None
             data["cycle_sub"] = list()
+        data["obs_data"] = list(self.__obs_dao.get_by_mid(instance.mid))
+        data["bili_data"] = list(self.__bili_dao.get_by_mid(instance.mid))
         return data
 
 
@@ -622,7 +541,7 @@ class CycleSubMeetingSerializer(ModelSerializer):
 class TranslateVideoTextSerializer(ModelSerializer):
     class Meta:
         model = MeetingObsRecords
-        fields = ['mid', 'text_vtt_url', 'text_json_url', 'text_video_url']
+        fields = ['mid', 'sub_id', 'text_vtt_url', 'text_json_url', 'text_video_url']
 
     def validate_mid(self, value):
         if not value:
@@ -640,4 +559,7 @@ class TranslateVideoTextSerializer(ModelSerializer):
         if not value:
             logger.error("check the empty text_json_url")
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return value
+
+    def validate_sub_id(self, value):
         return value

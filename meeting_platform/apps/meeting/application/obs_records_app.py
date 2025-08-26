@@ -21,5 +21,6 @@ class OBSRecordsApp:
         if not meeting_obj:
             raise MyValidationError(RetCode.STATUS_MEETING_NOT_EXIST)
         return self._meeting_obs_records_dao.update_by_mid(meeting_info.pop("mid"),
+                                                           meeting_info.get("sub_id"),
                                                            UploadStatus.FINISH.value,
                                                            **meeting_info)

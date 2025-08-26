@@ -25,8 +25,8 @@ class MeetingCycleSubMeetingDao:
         return cls._dao.objects.filter(date__gte=start_date, date__lte=end_date, mid=mid).values_list("date", flat=True)
 
     @classmethod
-    def get_first_by_date_range(cls, start_date, end_date, mid):
-        return cls._dao.objects.filter(date__gte=start_date, date__lte=end_date, mid=mid).order_by("date").first()
+    def get_first_by_date_range(cls, start_date, end_date, mid, sub_ids):
+        return cls._dao.objects.filter(date__gte=start_date, date__lte=end_date, mid=mid, sub_id__in=sub_ids).first()
 
     @classmethod
     def get_counts_by_mid(cls, mid):
@@ -51,6 +51,10 @@ class MeetingCycleSubMeetingDao:
     @classmethod
     def delete_by_mid(cls, mid, cur_date_str):
         return cls._dao.objects.filter(mid=mid, date__gt=cur_date_str).delete()
+
+    @classmethod
+    def get_by_mid_and_date(cls, mid, cur_date_str):
+        return cls._dao.objects.filter(mid=mid, date__gt=cur_date_str).all()
 
     @classmethod
     def update_by_mid_and_sub_id(cls, mid, sub_id, **kwargs):
