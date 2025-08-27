@@ -101,7 +101,7 @@ class MeetingApp:
             cur_date = datetime.datetime.now()
             end_date = datetime.datetime.strptime(meeting["cycle_end_date"], "%Y-%m-%d")
             if end_date >= cur_date + datetime.timedelta(days=180):
-                logger.error("_check_cycle_end must create the meeting lt 90 days")
+                logger.error("_check_cycle_end must create the meeting lt 180 days")
                 raise MyValidationError(RetCode.STATUS_MEETING_IN_HALF_YEAR_FAILED)
 
     @staticmethod
@@ -121,7 +121,7 @@ class MeetingApp:
 
     def _calc_meeting_count(self, meeting):
         """calc the meeting count"""
-        # TODO add the lock
+        # TODO add the lock to avoid the concurrent
         today = timezone.now().date()
         meeting_counts = self.meeting_dao.get_today_meeting_counts(meeting["community"], meeting["sponsor"], today)
         if meeting_counts >= settings.MEETING_CREATE_COUNT:
@@ -185,7 +185,8 @@ class MeetingApp:
                                                         meeting["mid"],
                                                         sub_meeting["sub_id"],
                                                         meeting_obj.id)
-                    self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"],
+                    self.meeting_bili_records_dao.create(UploadStatus.INIT.value,
+                                                         meeting["mid"],
                                                          sub_meeting["sub_id"],
                                                          meeting_obj.id)
                 cycle_date = {

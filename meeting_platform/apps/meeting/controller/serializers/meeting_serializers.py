@@ -62,18 +62,6 @@ class MeetingSerializer(ModelSerializer):
                   'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point']
         extra_kwargs = {
             'id': {'read_only': True},
-            'sponsor': {'required': True},
-            'group_name': {'required': True},
-            'community': {'required': True},
-            'topic': {'required': True},
-            'platform': {'required': True},
-            'date': {'required': False},
-            'start': {'required': False},
-            'end': {'required': False},
-            'agenda': {'required': False},
-            'etherpad': {'required': False},
-            'email_list': {'required': False},
-            'is_record': {'required': True},
             'mid': {'read_only': True},
             'm_mid': {'read_only': True},
             'join_url': {'read_only': True},
@@ -82,7 +70,21 @@ class MeetingSerializer(ModelSerializer):
             'is_delete': {'read_only': True},
             'duration': {'read_only': True},
             'duration_time': {'read_only': True},
+
+            'sponsor': {'required': True},
+            'group_name': {'required': True},
+            'community': {'required': True},
+            'topic': {'required': True},
+            'platform': {'required': True},
+            'is_record': {'required': True},
             'is_cycle': {'required': True},
+
+            'date': {'required': False},
+            'start': {'required': False},
+            'end': {'required': False},
+            'agenda': {'required': False},
+            'etherpad': {'required': False},
+            'email_list': {'required': False},
             'cycle_start_date': {'required': False},
             'cycle_end_date': {'required': False},
             'cycle_start': {'required': False},
@@ -324,7 +326,7 @@ class SingleMeetingSerializer(ModelSerializer):
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'duration', 'duration_time',
                   'join_url', 'create_time', 'update_time', 'is_delete', 'is_cycle', 'cycle_start_date',
-                  'cycle_end_date',  'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point']
+                  'cycle_end_date', 'cycle_start', 'cycle_end', 'cycle_type', 'cycle_interval', 'cycle_point']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'read_only': True},

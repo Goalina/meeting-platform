@@ -15,11 +15,11 @@ class MeetingDao:
     def get_conflict_meeting(cls, community, platform, date, start_search, end_search, meeting_id=None):
         query_set = cls.dao.objects.filter(community=community,
                                            platform=platform,
-                                           date=date,
-                                           is_delete=0,
-                                           is_cycle=False)
-        query_set = query_set.filter(Q(cycle_date__start__lt=end_search, cycle_date__end__gt=start_search) |
-                                     Q(start__lt=end_search, end__gt=start_search))
+                                           is_delete=0)
+        query_set = query_set.filter(Q(cycle_sub_meeting__date=date,
+                                       cycle_sub_meeting__start__lt=end_search,
+                                       cycle_sub_meeting__end__gt=start_search) |
+                                     Q(date=date, start__lt=end_search, end__gt=start_search))
         if meeting_id is None:
             return query_set.values_list("host_id")
         return query_set.exclude(id=meeting_id).values_list("host_id")
