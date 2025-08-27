@@ -205,7 +205,10 @@ class MeetingDateView(MyListModelMixin, GenericAPIView):
         date = request.query_params.get("date")
         if date is not None:
             date = self.serializer_class.check_date(date)
-        data = self.app_class.get_meeting_date(community, group_name, date)
+        is_record = request.query_params.get("is_record")
+        if is_record is not None:
+            is_record = self.serializer_class().validate_is_record(is_record)
+        data = self.app_class.get_meeting_date(community, group_name, date, is_record)
         return ret_json(data=data)
 
 

@@ -462,12 +462,14 @@ class MeetingApp:
             return list(host_info.keys())
         return list()
 
-    def get_meeting_date(self, community, group_name, date):
+    def get_meeting_date(self, community, group_name, date, is_record):
         queryset = self.meeting_dao.get_queryset().filter(is_delete=0)
         if community is not None:
             queryset = queryset.filter(community=community)
         if group_name is not None:
             queryset = queryset.filter(group_name=group_name)
+        if is_record is not None:
+            queryset = queryset.filter(is_record=is_record)
         if date is None:
             date = datetime.datetime.now()
         else:
