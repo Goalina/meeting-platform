@@ -333,13 +333,6 @@ class SingleMeetingSerializer(ModelSerializer):
             'group_name': {'read_only': True},
             'community': {'read_only': True},
             'platform': {'read_only': True},
-            'topic': {'required': True},
-            'date': {'required': False},
-            'start': {'required': False},
-            'end': {'required': False},
-            'agenda': {'required': False},
-            'etherpad': {'required': False},
-            'is_record': {'required': True},
             'email_list': {'read_only': True},
             'mid': {'read_only': True},
             'm_mid': {'read_only': True},
@@ -349,7 +342,16 @@ class SingleMeetingSerializer(ModelSerializer):
             'is_delete': {'read_only': True},
             'duration': {'read_only': True},
             'duration_time': {'read_only': True},
-            'is_cycle': {'required': True}
+
+            'topic': {'required': True},
+            'is_record': {'required': True},
+            'is_cycle': {'required': True},
+
+            'date': {'required': False},
+            'start': {'required': False},
+            'end': {'required': False},
+            'agenda': {'required': False},
+            'etherpad': {'required': False},
         }
 
     def _check_content_by_audit(self, value):
@@ -514,14 +516,15 @@ class CycleSubMeetingSerializer(ModelSerializer):
         model = MeetingCycleSubMeeting
         fields = ['mid', 'sub_id', 'date', 'start', 'end', "is_record", "cycle_sub", "sponsor"]
         extra_kwargs = {
-            'mid': {'required': True},
-            'date': {'required': True},
-            'start': {'required': True},
-            'end': {'required': True},
             'sub_id': {'read_only': True},
             'is_record': {'read_only': True},
             'cycle_sub': {'read_only': True},
             'sponsor': {'read_only': True},
+
+            'mid': {'required': True},
+            'date': {'required': True},
+            'start': {'required': True},
+            'end': {'required': True},
         }
 
     def get_is_record(self, obj):

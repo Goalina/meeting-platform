@@ -104,7 +104,7 @@ class RetCode(RetCodeBase):
         STATUS_MEETING_NO_AVAILABLE_HOST: "There is currently no available host, please go to the official website to "
                                           "view scheduled meetings",
         STATUS_MEETING_DATE_CONFLICT: "Time conflict, please adjust the time to schedule the meeting",
-        STATUS_MEETING_CANNOT_BE_OPERATE: "Cannot be deleted or update 1 hours before the meeting",
+        STATUS_MEETING_CANNOT_BE_OPERATE: "Cannot be deleted or update 30 minutes before the meeting",
         STATUS_MEETING_NO_PERMISSION: "Failed to operate a meeting due to insufficient permissions",
         STATUS_MEETING_INVALID_GROUP_NAME: "Invalid SIG name",
         STATUS_MEETING_INVALID_START: "The start time should not be earlier than the current time",
@@ -151,7 +151,7 @@ class RetCode(RetCodeBase):
         STATUS_MEETING_FAILED_UPDATE: "修改会议失败",
         STATUS_MEETING_NO_AVAILABLE_HOST: "目前没有可用的主持人，请前往官网查看预约会议",
         STATUS_MEETING_DATE_CONFLICT: "会议时间冲突，请调整会议预定时间(距离会议开始或结束半小时内存在会议)",
-        STATUS_MEETING_CANNOT_BE_OPERATE: "距离会议开始时间小于一个小时，无法修改或删除",
+        STATUS_MEETING_CANNOT_BE_OPERATE: "距离会议开始时间小于半个小时，无法修改或删除",
         STATUS_MEETING_NO_PERMISSION: "权限不足导致操作会议失败",
         STATUS_MEETING_INVALID_GROUP_NAME: "错误的SIG组名",
         STATUS_MEETING_INVALID_START: "请输入正确的开始时间",

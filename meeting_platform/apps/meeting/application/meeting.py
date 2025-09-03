@@ -87,16 +87,18 @@ class MeetingApp:
 
     @staticmethod
     def _is_in_prepare_meeting_duration_before_meeting(meeting, check_single_meeting=False):
+        """check the start datetime of meeting is expired or lt 60minutes"""
         if not meeting["is_cycle"] or check_single_meeting:
             start_date_str = "{} {}".format(meeting["date"], meeting["start"])
             start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
             if int((start_date - get_cur_date()).total_seconds()) < 0:
                 raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE_BY_EXPIRED)
-            if int((start_date - get_cur_date()).total_seconds()) < 60 * 60:
+            if int((start_date - get_cur_date()).total_seconds()) < 30 * 60:
                 raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE)
 
     @staticmethod
     def _check_cycle_end(meeting):
+        """check the end date lt 180"""
         if meeting["is_cycle"]:
             cur_date = datetime.datetime.now()
             end_date = datetime.datetime.strptime(meeting["cycle_end_date"], "%Y-%m-%d")
@@ -114,6 +116,7 @@ class MeetingApp:
                 logger.error("[MeetingApp/_send_message] err:{}, and traceback:{}".format(e, traceback.format_exc()))
 
     def __get_meeting_sub_count(self, mid):
+        """get the meeting cycle sub meeting count"""
         m_count = self.meeting_cycle_sub_dao.get_counts_by_mid(mid)
         if m_count <= 1:
             logger.error("sub meeting count lt 1")
@@ -148,111 +151,133 @@ class MeetingApp:
         if m_count != 0:
             raise MyValidationError(RetCode.STATUS_MEETING_REPEAT_FAILED)
 
+    @staticmethod
+    def _get_create_meeting_po(meeting):
+        """get the meeting po"""
+        return {
+            "sponsor": meeting.get("sponsor"),
+            "group_name": meeting.get("group_name"),
+            "community": meeting.get("community"),
+            "topic": meeting.get("topic"),
+            "platform": meeting.get("platform"),
+            "is_cycle": meeting.get("is_cycle"),
+            "date": meeting.get("date"),
+            "start": meeting.get("start"),
+            "end": meeting.get("end"),
+            "agenda": meeting.get("agenda"),
+            "etherpad": meeting.get("etherpad"),
+            "email_list": meeting.get("email_list"),
+            "host_id": meeting.get("host_id"),
+            "mid": meeting.get("mid"),
+            "m_mid": meeting.get("m_mid"),
+            "join_url": meeting.get("join_url"),
+            "is_record": meeting.get("is_record"),
+        }
+
+    @staticmethod
+    def _get_create_meeting_cycle_sub_po(meeting, sub_meeting, meeting_obj):
+        """get the meeting cycle sub po"""
+        return {
+            "mid": meeting["mid"],
+            "sub_id": sub_meeting["sub_id"],
+            "date": sub_meeting["date"],
+            "start": sub_meeting["start"],
+            "end": sub_meeting["end"],
+            "meeting": meeting_obj,
+        }
+
+    @staticmethod
+    def _get_create_meeting_cycle_date_po(meeting, meeting_obj):
+        """get the meeting cycle date po"""
+        return {
+            "mid": meeting["mid"],
+            "start_date": meeting.get("cycle_start_date"),
+            "end_date": meeting.get("cycle_end_date"),
+            "start": meeting.get("cycle_start"),
+            "end": meeting.get("cycle_end"),
+            "cycle_type": meeting.get("cycle_type").value,
+            "interval": meeting.get("cycle_interval"),
+            "meeting": meeting_obj,
+            "point": ",".join([str(i) for i in meeting["cycle_point"]])
+            if meeting.get("cycle_point") is not None else None,
+        }
+
+    def _create_obs_records(self, status, mid, sub_id, meeting_id):
+        """create obs records"""
+        if settings.IS_UPLOAD_OBS:
+            self.meeting_obs_records_dao.create(status, mid, sub_id, meeting_id)
+
+    def _create_bili_records(self, status, mid, sub_id, meeting_id):
+        """create obs records"""
+        if settings.IS_UPLOAD_BILI:
+            self.meeting_bili_records_dao.create(status, mid, sub_id, meeting_id)
+
+    def _delete_obs_records(self, mid, sub_id):
+        """create obs records"""
+        if settings.IS_UPLOAD_OBS:
+            self.meeting_obs_records_dao.delete_by_mid_and_sub_id(mid, sub_id)
+
+    def _delete_bili_records(self, mid, sub_id):
+        """create obs records"""
+        if settings.IS_UPLOAD_BILI:
+            self.meeting_bili_records_dao.delete_by_mid_and_sub_id(mid, sub_id)
+
     def _save_dao(self, meeting):
+        """save to database"""
         with transaction.atomic():
-            meeting_data = {
-                "sponsor": meeting.get("sponsor"),
-                "group_name": meeting.get("group_name"),
-                "community": meeting.get("community"),
-                "topic": meeting.get("topic"),
-                "platform": meeting.get("platform"),
-                "is_cycle": meeting.get("is_cycle"),
-                "date": meeting.get("date"),
-                "start": meeting.get("start"),
-                "end": meeting.get("end"),
-                "agenda": meeting.get("agenda"),
-                "etherpad": meeting.get("etherpad"),
-                "email_list": meeting.get("email_list"),
-                "host_id": meeting.get("host_id"),
-                "mid": meeting.get("mid"),
-                "m_mid": meeting.get("m_mid"),
-                "join_url": meeting.get("join_url"),
-                "is_record": meeting.get("is_record"),
-            }
+            meeting_data = self._get_create_meeting_po(meeting)
             meeting_obj = self.meeting_dao.create(**meeting_data)
             if meeting["is_cycle"]:
                 for sub_meeting in meeting.get("sub_info"):
-                    cycle_sub_meeting = {
-                        "mid": meeting["mid"],
-                        "sub_id": sub_meeting["sub_id"],
-                        "date": sub_meeting["date"],
-                        "start": sub_meeting["start"],
-                        "end": sub_meeting["end"],
-                        "meeting": meeting_obj,
-                    }
+                    cycle_sub_meeting = self._get_create_meeting_cycle_sub_po(meeting, sub_meeting, meeting_obj)
                     self.meeting_cycle_sub_dao.create(**cycle_sub_meeting)
-                    self.meeting_obs_records_dao.create(UploadStatus.INIT.value,
-                                                        meeting["mid"],
-                                                        sub_meeting["sub_id"],
-                                                        meeting_obj.id)
-                    self.meeting_bili_records_dao.create(UploadStatus.INIT.value,
-                                                         meeting["mid"],
-                                                         sub_meeting["sub_id"],
-                                                         meeting_obj.id)
-                cycle_date = {
-                    "mid": meeting["mid"],
-                    "start_date": meeting.get("cycle_start_date"),
-                    "end_date": meeting.get("cycle_end_date"),
-                    "start": meeting.get("cycle_start"),
-                    "end": meeting.get("cycle_end"),
-                    "cycle_type": meeting.get("cycle_type").value,
-                    "interval": meeting.get("cycle_interval"),
-                    "meeting": meeting_obj,
-                    "point": ",".join([str(i) for i in meeting["cycle_point"]])
-                    if meeting.get("cycle_point") is not None else None,
-                }
+                    self._create_obs_records(UploadStatus.INIT.value,
+                                             meeting["mid"],
+                                             sub_meeting["sub_id"],
+                                             meeting_obj.id)
+                    self._create_bili_records(UploadStatus.INIT.value,
+                                              meeting["mid"],
+                                              sub_meeting["sub_id"],
+                                              meeting_obj.id)
+                cycle_date = self._get_create_meeting_cycle_date_po(meeting, meeting_obj)
                 self.meeting_cycle_dao.create(**cycle_date)
             else:
-                self.meeting_obs_records_dao.create(UploadStatus.INIT.value,
-                                                    meeting["mid"],
-                                                    None,
-                                                    meeting_obj.id)
-                self.meeting_bili_records_dao.create(UploadStatus.INIT.value,
-                                                     meeting["mid"],
-                                                     None,
-                                                     meeting_obj.id)
+                self._create_obs_records(UploadStatus.INIT.value,
+                                         meeting["mid"],
+                                         None,
+                                         meeting_obj.id)
+                self._create_bili_records(UploadStatus.INIT.value,
+                                          meeting["mid"],
+                                          None,
+                                          meeting_obj.id)
             return meeting_obj.id
 
     def _update_dao(self, meeting_id, meeting):
+        """update the meeting dao"""
         with transaction.atomic():
             if meeting["is_cycle"]:
+                # clear the data
                 cur_date_str = datetime.datetime.now().date().strftime("%Y-%m-%d")
                 cycle_sub_info = self.meeting_cycle_sub_dao.get_by_mid_and_date(meeting["mid"], cur_date_str)
                 for cycle_sub_temp in cycle_sub_info:
-                    self.meeting_obs_records_dao.delete_by_mid_and_sub_id(cycle_sub_temp.mid,
-                                                                          cycle_sub_temp.sub_id)
-                    self.meeting_bili_records_dao.delete_by_mid_and_sub_id(cycle_sub_temp.mid,
-                                                                           cycle_sub_temp.sub_id)
+                    self._delete_obs_records(cycle_sub_temp.mid, cycle_sub_temp.sub_id)
+                    self._delete_bili_records(cycle_sub_temp.mid, cycle_sub_temp.sub_id)
                 self.meeting_cycle_sub_dao.delete_by_mid(meeting["mid"], cur_date_str)
+                # create the sub info
                 meeting_obj = self.meeting_dao.get_by_mid(meeting["mid"])
                 for sub_meeting in meeting.get("sub_info"):
-                    self.meeting_cycle_sub_dao.create(
-                        mid=meeting["mid"],
-                        sub_id=sub_meeting["sub_id"],
-                        date=sub_meeting["date"],
-                        start=sub_meeting["start"],
-                        end=sub_meeting["end"],
-                        meeting=meeting_obj,
-                    )
-                    self.meeting_obs_records_dao.create(UploadStatus.INIT.value,
-                                                        meeting["mid"],
-                                                        sub_meeting["sub_id"],
-                                                        meeting_obj.id)
-                    self.meeting_bili_records_dao.create(UploadStatus.INIT.value, meeting["mid"],
-                                                         sub_meeting["sub_id"],
-                                                         meeting_obj.id)
-                cycle_date = {
-                    "mid": meeting["mid"],
-                    "start_date": meeting.get("cycle_start_date"),
-                    "end_date": meeting.get("cycle_end_date"),
-                    "start": meeting.get("cycle_start"),
-                    "end": meeting.get("cycle_end"),
-                    "cycle_type": meeting["cycle_type"].value,
-                    "interval": meeting.get("cycle_interval"),
-                    "meeting": meeting_obj,
-                    "point": ",".join([str(i) for i in meeting["cycle_point"]])
-                    if meeting.get("cycle_point") is not None else None,
-                }
+                    cycle_sub_meeting = self._get_create_meeting_cycle_sub_po(meeting, sub_meeting, meeting_obj)
+                    self.meeting_cycle_sub_dao.create(**cycle_sub_meeting)
+                    self._create_obs_records(UploadStatus.INIT.value,
+                                             meeting["mid"],
+                                             sub_meeting["sub_id"],
+                                             meeting_obj.id)
+                    self._create_bili_records(UploadStatus.INIT.value,
+                                              meeting["mid"],
+                                              sub_meeting["sub_id"],
+                                              meeting_obj.id)
+                # create the cycle date info
+                cycle_date = self._get_create_meeting_cycle_date_po(meeting, meeting_obj)
                 if self.meeting_cycle_dao.get_by_id(meeting["mid"]) is not None:
                     meeting["cycle_date"] = self.meeting_cycle_dao.create(**cycle_date)
                 else:
@@ -319,7 +344,7 @@ class MeetingApp:
         """update meeting"""
         meeting = self.meeting_dao.get_by_id(meeting_id)
         if not meeting:
-            logger.error('[MeetingApp/update]Invalid meeting id:{}'.format(meeting_id))
+            logger.error('[MeetingApp/update]meeting id:{} is not exist'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
         meeting = model_to_dict(meeting)
         set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
@@ -341,37 +366,6 @@ class MeetingApp:
         result = self._update_dao(meeting_id, meeting)
         # send message
         start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
-        logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
-                    .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
-        return result
-
-    def update_sub(self, meeting_data):
-        meeting = self.meeting_dao.get_by_mid(meeting_data["mid"])
-        if not meeting:
-            logger.error('[MeetingApp/update_sub]Invalid meeting mid:{}'.format(meeting_data["mid"]))
-            raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
-        meeting_sub_obj = self.meeting_cycle_sub_dao.get_by_mid_and_sub_id(meeting_data["mid"], meeting_data["sub_id"])
-        if not meeting_sub_obj:
-            logger.error('[MeetingApp/update_sub]Invalid meeting mid:{}/{}'.format(meeting_data["mid"],
-                                                                                   meeting_data["sub_id"]))
-            raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
-        meeting = model_to_dict(meeting)
-        meeting.update({"sequence": meeting["sequence"] + 1})
-        meeting.update(meeting_data)
-        # check modify meeting count
-        if meeting["sequence"] > settings.MEETING_MODIFY_COUNT + 1:
-            raise MyValidationError(RetCode.STATUS_MEETING_MODIFY_COUNT_LIMIT)
-        # check meeting-conflict
-        self._get_and_check_conflict_meetings_by_date(meeting, meeting["id"], check_single_meeting=True)
-        # check not update in the before in start date
-        self._is_in_prepare_meeting_duration_before_meeting(meeting, check_single_meeting=True)
-        # update meeting
-        self.meeting_adapter_impl.update_sub(meeting)
-        # update in database
-        result = self._update_sub_dao(meeting)
-        # send message
-        meeting["check_single_meeting"] = True
-        start_thread(self._send_message, (meeting, self.update_sub_message_adapter_impl))
         logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
         return result
@@ -407,6 +401,37 @@ class MeetingApp:
         start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
         logger.info('[MeetingApp/delete] {}/{}: delete meeting which mid is {} and id is {}.'
                     .format(meeting["community"], meeting["platform"], meeting["mid"], meeting_id))
+        return result
+
+    def update_sub(self, meeting_data):
+        meeting = self.meeting_dao.get_by_mid(meeting_data["mid"])
+        if not meeting:
+            logger.error('[MeetingApp/update_sub]Invalid meeting mid:{}'.format(meeting_data["mid"]))
+            raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
+        meeting_sub_obj = self.meeting_cycle_sub_dao.get_by_mid_and_sub_id(meeting_data["mid"], meeting_data["sub_id"])
+        if not meeting_sub_obj:
+            logger.error('[MeetingApp/update_sub]Invalid meeting mid:{}/{}'.format(meeting_data["mid"],
+                                                                                   meeting_data["sub_id"]))
+            raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
+        meeting = model_to_dict(meeting)
+        meeting.update({"sequence": meeting["sequence"] + 1})
+        meeting.update(meeting_data)
+        # check modify meeting count
+        if meeting["sequence"] > settings.MEETING_MODIFY_COUNT + 1:
+            raise MyValidationError(RetCode.STATUS_MEETING_MODIFY_COUNT_LIMIT)
+        # check meeting-conflict
+        self._get_and_check_conflict_meetings_by_date(meeting, meeting["id"], check_single_meeting=True)
+        # check not update in the before in start date
+        self._is_in_prepare_meeting_duration_before_meeting(meeting, check_single_meeting=True)
+        # update meeting
+        self.meeting_adapter_impl.update_sub(meeting)
+        # update in database
+        result = self._update_sub_dao(meeting)
+        # send message
+        meeting["check_single_meeting"] = True
+        start_thread(self._send_message, (meeting, self.update_sub_message_adapter_impl))
+        logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
+                    .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
         return result
 
     def delete_sub(self, sub_id):
