@@ -546,7 +546,7 @@ class CycleSubMeetingSerializer(ModelSerializer):
 class TranslateVideoTextSerializer(ModelSerializer):
     class Meta:
         model = MeetingObsRecords
-        fields = ['mid', 'sub_id', 'text_vtt_url', 'text_json_url', 'text_video_url']
+        fields = ['mid', 'sub_id', 'text_vtt_url', 'text_json_url', 'text_video_url', 'topic_url']
 
     def validate_mid(self, value):
         if not value:
@@ -568,3 +568,7 @@ class TranslateVideoTextSerializer(ModelSerializer):
 
     def validate_sub_id(self, value):
         return value
+
+    def validate_topic_url(self, value):
+        return value
+

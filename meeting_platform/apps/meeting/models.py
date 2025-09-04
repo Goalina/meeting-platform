@@ -85,6 +85,7 @@ class MeetingObsRecords(models.Model):
     text_vtt_url = models.CharField(verbose_name='文本vtt地址', max_length=255, null=True, blank=True)
     text_json_url = models.CharField(verbose_name='文本json地址', max_length=255, null=True, blank=True)
     text_video_url = models.CharField(verbose_name='文本video地址', max_length=255, null=True, blank=True)
+    topic_url = models.CharField(verbose_name='议题切分地址', max_length=255, null=True, blank=True)
     meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="cycle_obs", default=None)
 
     objects = models.Manager()

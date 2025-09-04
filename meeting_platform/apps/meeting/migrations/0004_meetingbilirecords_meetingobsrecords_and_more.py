@@ -34,6 +34,7 @@ class Migration(migrations.Migration):
                 ('text_vtt_url', models.CharField(blank=True, max_length=255, null=True, verbose_name='文本vtt地址')),
                 ('text_json_url', models.CharField(blank=True, max_length=255, null=True, verbose_name='文本json地址')),
                 ('text_video_url', models.CharField(blank=True, max_length=255, null=True, verbose_name='文本video地址')),
+                ('topic_url', models.CharField(blank=True, max_length=255, null=True, verbose_name='议题切分地址')),
             ],
             options={
                 'verbose_name': 'meetings_records_obs',
